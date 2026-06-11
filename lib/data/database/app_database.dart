@@ -7,7 +7,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const String _databaseName = 'gastro_costos.db';
-  static const int _databaseVersion = 1;
+  static const int _databaseVersion = 2;
 
   Database? _database;
 
@@ -24,7 +24,12 @@ class AppDatabase {
     final databasePath = await getDatabasesPath();
     final path = join(databasePath, _databaseName);
 
-    return openDatabase(path, version: _databaseVersion, onCreate: _onCreate);
+    return openDatabase(
+      path,
+      version: _databaseVersion,
+      onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
+    );
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -37,7 +42,9 @@ class AppDatabase {
         unidadCompra TEXT NOT NULL,
         unidadBase TEXT NOT NULL,
         costoPorUnidadBase REAL NOT NULL,
-        fechaRegistro TEXT NOT NULL
+        fechaCompra TEXT NOT NULL,
+        fechaRegistro TEXT NOT NULL,
+        imagePath TEXT
       )
     ''');
 
@@ -102,5 +109,12 @@ class AppDatabase {
         observaciones TEXT NOT NULL
       )
     ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE ingredientes ADD COLUMN fechaCompra TEXT');
+      await db.execute('ALTER TABLE ingredientes ADD COLUMN imagePath TEXT');
+    }
   }
 }

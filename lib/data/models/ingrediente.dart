@@ -7,7 +7,9 @@ class Ingrediente {
     required this.unidadCompra,
     required this.unidadBase,
     required this.costoPorUnidadBase,
+    required this.fechaCompra,
     required this.fechaRegistro,
+    this.imagePath,
   });
 
   final int id;
@@ -17,7 +19,9 @@ class Ingrediente {
   final String unidadCompra;
   final String unidadBase;
   final double costoPorUnidadBase;
+  final DateTime fechaCompra;
   final DateTime fechaRegistro;
+  final String? imagePath;
 
   Ingrediente copyWith({
     int? id,
@@ -27,7 +31,9 @@ class Ingrediente {
     String? unidadCompra,
     String? unidadBase,
     double? costoPorUnidadBase,
+    DateTime? fechaCompra,
     DateTime? fechaRegistro,
+    String? imagePath,
   }) {
     return Ingrediente(
       id: id ?? this.id,
@@ -37,7 +43,9 @@ class Ingrediente {
       unidadCompra: unidadCompra ?? this.unidadCompra,
       unidadBase: unidadBase ?? this.unidadBase,
       costoPorUnidadBase: costoPorUnidadBase ?? this.costoPorUnidadBase,
+      fechaCompra: fechaCompra ?? this.fechaCompra,
       fechaRegistro: fechaRegistro ?? this.fechaRegistro,
+      imagePath: imagePath ?? this.imagePath,
     );
   }
 
@@ -50,11 +58,15 @@ class Ingrediente {
       'unidadCompra': unidadCompra,
       'unidadBase': unidadBase,
       'costoPorUnidadBase': costoPorUnidadBase,
+      'fechaCompra': fechaCompra.toIso8601String(),
       'fechaRegistro': fechaRegistro.toIso8601String(),
+      'imagePath': imagePath,
     };
   }
 
   factory Ingrediente.fromMap(Map<String, dynamic> map) {
+    final fechaRegistro = DateTime.parse(map['fechaRegistro'] as String);
+
     return Ingrediente(
       id: map['id'] as int,
       nombre: map['nombre'] as String,
@@ -63,7 +75,11 @@ class Ingrediente {
       unidadCompra: map['unidadCompra'] as String,
       unidadBase: map['unidadBase'] as String,
       costoPorUnidadBase: (map['costoPorUnidadBase'] as num).toDouble(),
-      fechaRegistro: DateTime.parse(map['fechaRegistro'] as String),
+      fechaCompra: map['fechaCompra'] == null
+          ? fechaRegistro
+          : DateTime.parse(map['fechaCompra'] as String),
+      fechaRegistro: fechaRegistro,
+      imagePath: map['imagePath'] as String?,
     );
   }
 }
