@@ -7,7 +7,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const String _databaseName = 'gastro_costos.db';
-  static const int _databaseVersion = 2;
+  static const int _databaseVersion = 3;
 
   Database? _database;
 
@@ -59,6 +59,8 @@ class AppDatabase {
         fechaRegistro TEXT NOT NULL
       )
     ''');
+
+    await _createRecetaIngredientesTable(db);
 
     await db.execute('''
       CREATE TABLE productos (
@@ -116,5 +118,25 @@ class AppDatabase {
       await db.execute('ALTER TABLE ingredientes ADD COLUMN fechaCompra TEXT');
       await db.execute('ALTER TABLE ingredientes ADD COLUMN imagePath TEXT');
     }
+
+    if (oldVersion < 3) {
+      await _createRecetaIngredientesTable(db);
+    }
+  }
+
+  Future<void> _createRecetaIngredientesTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE receta_ingredientes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        recetaId INTEGER NOT NULL,
+        ingredienteId INTEGER NOT NULL,
+        nombreIngrediente TEXT NOT NULL,
+        cantidadUsada REAL NOT NULL,
+        unidadUsada TEXT NOT NULL,
+        costoUnitario REAL NOT NULL,
+        costoTotal REAL NOT NULL,
+        fechaRegistro TEXT NOT NULL
+      )
+    ''');
   }
 }

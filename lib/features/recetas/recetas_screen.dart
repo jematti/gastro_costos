@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/models/receta.dart';
 import '../../data/repositories/receta_repository.dart';
+import 'receta_detalle_screen.dart';
 
 class RecetasScreen extends StatefulWidget {
   const RecetasScreen({super.key});
@@ -24,6 +25,20 @@ class _RecetasScreenState extends State<RecetasScreen> {
     setState(() {
       _recetasFuture = _repository.getRecetas();
     });
+  }
+
+  Future<void> _abrirDetalle(Receta receta) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => RecetaDetalleScreen(receta: receta),
+      ),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    _recargarRecetas();
   }
 
   Future<void> _abrirFormulario({Receta? receta}) async {
@@ -143,6 +158,7 @@ class _RecetasScreenState extends State<RecetasScreen> {
 
               return Card(
                 child: ListTile(
+                  onTap: () => _abrirDetalle(receta),
                   title: Text(receta.nombre),
                   subtitle: Text(
                     '${_descripcionCorta(receta.descripcion)}\n'
@@ -241,15 +257,17 @@ class _RecetaFormDialogState extends State<_RecetaFormDialog> {
     }
 
     final receta = widget.receta;
+    final porciones = int.parse(_porcionesController.text.trim());
+    final costoTotal = receta?.costoTotal ?? 0.0;
 
     Navigator.of(context).pop(
       Receta(
         id: receta?.id ?? 0,
         nombre: _nombreController.text.trim(),
         descripcion: _descripcionController.text.trim(),
-        porciones: int.parse(_porcionesController.text.trim()),
-        costoTotal: 0,
-        costoPorPorcion: 0,
+        porciones: porciones,
+        costoTotal: costoTotal,
+        costoPorPorcion: costoTotal / porciones,
         fechaRegistro: receta?.fechaRegistro ?? DateTime.now(),
       ),
     );

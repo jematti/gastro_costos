@@ -34,4 +34,19 @@ class RecetaRepository {
 
     return db.delete(_tableName, where: 'id = ?', whereArgs: [id]);
   }
+
+  Future<int> updateCostosReceta(
+    int recetaId,
+    double costoTotal,
+    double costoPorPorcion,
+  ) async {
+    final db = await AppDatabase.instance.database;
+
+    return db.update(
+      _tableName,
+      {'costoTotal': costoTotal, 'costoPorPorcion': costoPorPorcion},
+      where: 'id = ?',
+      whereArgs: [recetaId],
+    );
+  }
 }
