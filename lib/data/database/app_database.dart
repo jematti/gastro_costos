@@ -7,7 +7,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const String _databaseName = 'gastro_costos.db';
-  static const int _databaseVersion = 7;
+  static const int _databaseVersion = 8;
 
   Database? _database;
 
@@ -69,7 +69,13 @@ class AppDatabase {
         recetaId INTEGER NOT NULL,
         nombreReceta TEXT,
         costoBase REAL NOT NULL,
+        minutosElaboracion REAL NOT NULL,
+        costoHoraManoObra REAL NOT NULL,
+        costoManoObra REAL NOT NULL,
+        costosVariables REAL NOT NULL,
+        costosFijos REAL NOT NULL,
         otrosCostos REAL NOT NULL,
+        costoTotalProducto REAL NOT NULL,
         margenGanancia REAL NOT NULL,
         precioVentaSugerido REAL NOT NULL,
         precioVentaFinal REAL NOT NULL,
@@ -79,6 +85,8 @@ class AppDatabase {
 
     await _createProductoCostosTable(db);
     await _createCostosFijosTable(db);
+    await _createProductoCostosFijosTable(db);
+    await _createProductoCostosVariablesTable(db);
 
     await db.execute('''
       CREATE TABLE ventas (
@@ -157,6 +165,33 @@ class AppDatabase {
     if (oldVersion < 7) {
       await _createCostosFijosTable(db);
     }
+
+    if (oldVersion < 8) {
+      await db.execute(
+        'ALTER TABLE productos ADD COLUMN minutosElaboracion REAL NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE productos ADD COLUMN costoHoraManoObra REAL NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE productos ADD COLUMN costoManoObra REAL NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE productos ADD COLUMN costosVariables REAL NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE productos ADD COLUMN costosFijos REAL NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE productos ADD COLUMN costoTotalProducto REAL NOT NULL DEFAULT 0',
+      );
+      await db.execute('''
+        UPDATE productos
+        SET costoTotalProducto = costoBase + otrosCostos
+      ''');
+      await _createProductoCostosFijosTable(db);
+      await _createProductoCostosVariablesTable(db);
+    }
   }
 
   Future<void> _createRecetaIngredientesTable(Database db) async {
@@ -203,6 +238,37 @@ class AppDatabase {
         categoria TEXT NOT NULL,
         montoMensual REAL NOT NULL,
         activo INTEGER NOT NULL,
+        fechaRegistro TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> _createProductoCostosFijosTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE producto_costos_fijos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        productoId INTEGER NOT NULL,
+        costoFijoId INTEGER NOT NULL,
+        nombreCostoFijo TEXT NOT NULL,
+        montoMensual REAL NOT NULL,
+        unidadesEstimadasMes REAL NOT NULL,
+        costoProrrateado REAL NOT NULL,
+        fechaRegistro TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> _createProductoCostosVariablesTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE producto_costos_variables (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        productoId INTEGER NOT NULL,
+        nombre TEXT NOT NULL,
+        categoria TEXT NOT NULL,
+        tipoCalculo TEXT NOT NULL,
+        monto REAL,
+        porcentaje REAL,
+        costoCalculado REAL NOT NULL,
         fechaRegistro TEXT NOT NULL
       )
     ''');

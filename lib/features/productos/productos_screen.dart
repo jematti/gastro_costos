@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../data/models/producto.dart';
-import '../../data/models/producto_costo.dart';
+import '../../data/models/producto_costo_fijo.dart';
+import '../../data/models/producto_costo_variable.dart';
+import '../../data/repositories/costo_fijo_repository.dart';
 import '../../data/repositories/producto_costo_repository.dart';
+import '../../data/repositories/producto_costo_fijo_repository.dart';
+import '../../data/repositories/producto_costo_variable_repository.dart';
 import '../../data/repositories/producto_repository.dart';
 import '../../data/repositories/receta_repository.dart';
 import 'costos_fijos_screen.dart';
@@ -17,7 +21,13 @@ class ProductosScreen extends StatefulWidget {
 
 class _ProductosScreenState extends State<ProductosScreen> {
   final ProductoRepository _productoRepository = ProductoRepository();
-  final ProductoCostoRepository _costoRepository = ProductoCostoRepository();
+  final ProductoCostoFijoRepository _costoFijoRepository =
+      ProductoCostoFijoRepository();
+  final ProductoCostoVariableRepository _costoVariableRepository =
+      ProductoCostoVariableRepository();
+  final ProductoCostoRepository _costoAnteriorRepository =
+      ProductoCostoRepository();
+  final CostoFijoRepository _costosNegocioRepository = CostoFijoRepository();
   final RecetaRepository _recetaRepository = RecetaRepository();
   late Future<List<Producto>> _productosFuture;
 
@@ -35,9 +45,16 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
   Future<void> _abrirFormulario({Producto? producto}) async {
     final recetas = await _recetaRepository.getRecetas();
-    final costos = producto == null
-        ? <ProductoCosto>[]
-        : await _costoRepository.getCostosByProducto(producto.id);
+    final costosNegocio = await _costosNegocioRepository
+        .getCostosFijosActivos();
+    final costosFijos = producto == null
+        ? <ProductoCostoFijo>[]
+        : await _costoFijoRepository.getCostosFijosByProducto(producto.id);
+    final costosVariables = producto == null
+        ? <ProductoCostoVariable>[]
+        : await _costoVariableRepository.getCostosVariablesByProducto(
+            producto.id,
+          );
 
     if (!mounted) {
       return;
@@ -55,7 +72,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
       builder: (context) => ProductoFormDialog(
         recetas: recetas,
         producto: producto,
-        costosIniciales: costos,
+        costosNegocio: costosNegocio,
+        costosFijosIniciales: costosFijos,
+        costosVariablesIniciales: costosVariables,
       ),
     );
 
@@ -69,11 +88,20 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
     if (producto != null) {
       await _productoRepository.updateProducto(resultado.producto);
-      await _costoRepository.deleteCostosByProducto(producto.id);
+      await _costoFijoRepository.deleteCostosFijosByProducto(producto.id);
+      await _costoVariableRepository.deleteCostosVariablesByProducto(
+        producto.id,
+      );
+      await _costoAnteriorRepository.deleteCostosByProducto(producto.id);
     }
 
-    for (final costo in resultado.costos) {
-      await _costoRepository.insertProductoCosto(
+    for (final costo in resultado.costosFijos) {
+      await _costoFijoRepository.insertProductoCostoFijo(
+        costo.copyWith(id: 0, productoId: productoId),
+      );
+    }
+    for (final costo in resultado.costosVariables) {
+      await _costoVariableRepository.insertProductoCostoVariable(
         costo.copyWith(id: 0, productoId: productoId),
       );
     }
@@ -115,7 +143,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
       return;
     }
 
-    await _costoRepository.deleteCostosByProducto(producto.id);
+    await _costoFijoRepository.deleteCostosFijosByProducto(producto.id);
+    await _costoVariableRepository.deleteCostosVariablesByProducto(producto.id);
+    await _costoAnteriorRepository.deleteCostosByProducto(producto.id);
     await _productoRepository.deleteProducto(producto.id);
 
     if (!mounted) {
@@ -181,8 +211,6 @@ class _ProductosScreenState extends State<ProductosScreen> {
             separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final producto = productos[index];
-              final costoTotal = producto.costoBase + producto.otrosCostos;
-
               return Card(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
@@ -200,16 +228,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                             const SizedBox(height: 6),
                             Text('Receta: ${producto.nombreReceta}'),
                             Text(
-                              'Costo base: ${producto.costoBase.toStringAsFixed(2)} Bs',
-                            ),
-                            Text(
-                              'Otros costos: ${producto.otrosCostos.toStringAsFixed(2)} Bs',
-                            ),
-                            Text(
-                              'Costo total: ${costoTotal.toStringAsFixed(2)} Bs',
-                            ),
-                            Text(
-                              'Margen: ${producto.margenGanancia.toStringAsFixed(0)}%',
+                              'Costo total: ${producto.costoTotalProducto.toStringAsFixed(2)} Bs',
                             ),
                             Text(
                               'Sugerido: ${producto.precioVentaSugerido.toStringAsFixed(2)} Bs',

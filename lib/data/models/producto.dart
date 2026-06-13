@@ -5,7 +5,13 @@ class Producto {
     required this.recetaId,
     required this.nombreReceta,
     required this.costoBase,
+    required this.minutosElaboracion,
+    required this.costoHoraManoObra,
+    required this.costoManoObra,
+    required this.costosVariables,
+    required this.costosFijos,
     required this.otrosCostos,
+    required this.costoTotalProducto,
     required this.margenGanancia,
     required this.precioVentaSugerido,
     required this.precioVentaFinal,
@@ -17,7 +23,13 @@ class Producto {
   final int recetaId;
   final String nombreReceta;
   final double costoBase;
+  final double minutosElaboracion;
+  final double costoHoraManoObra;
+  final double costoManoObra;
+  final double costosVariables;
+  final double costosFijos;
   final double otrosCostos;
+  final double costoTotalProducto;
   final double margenGanancia;
   final double precioVentaSugerido;
   final double precioVentaFinal;
@@ -29,7 +41,13 @@ class Producto {
     int? recetaId,
     String? nombreReceta,
     double? costoBase,
+    double? minutosElaboracion,
+    double? costoHoraManoObra,
+    double? costoManoObra,
+    double? costosVariables,
+    double? costosFijos,
     double? otrosCostos,
+    double? costoTotalProducto,
     double? margenGanancia,
     double? precioVentaSugerido,
     double? precioVentaFinal,
@@ -41,7 +59,13 @@ class Producto {
       recetaId: recetaId ?? this.recetaId,
       nombreReceta: nombreReceta ?? this.nombreReceta,
       costoBase: costoBase ?? this.costoBase,
+      minutosElaboracion: minutosElaboracion ?? this.minutosElaboracion,
+      costoHoraManoObra: costoHoraManoObra ?? this.costoHoraManoObra,
+      costoManoObra: costoManoObra ?? this.costoManoObra,
+      costosVariables: costosVariables ?? this.costosVariables,
+      costosFijos: costosFijos ?? this.costosFijos,
       otrosCostos: otrosCostos ?? this.otrosCostos,
+      costoTotalProducto: costoTotalProducto ?? this.costoTotalProducto,
       margenGanancia: margenGanancia ?? this.margenGanancia,
       precioVentaSugerido: precioVentaSugerido ?? this.precioVentaSugerido,
       precioVentaFinal: precioVentaFinal ?? this.precioVentaFinal,
@@ -56,7 +80,13 @@ class Producto {
       'recetaId': recetaId,
       'nombreReceta': nombreReceta,
       'costoBase': costoBase,
+      'minutosElaboracion': minutosElaboracion,
+      'costoHoraManoObra': costoHoraManoObra,
+      'costoManoObra': costoManoObra,
+      'costosVariables': costosVariables,
+      'costosFijos': costosFijos,
       'otrosCostos': otrosCostos,
+      'costoTotalProducto': costoTotalProducto,
       'margenGanancia': margenGanancia,
       'precioVentaSugerido': precioVentaSugerido,
       'precioVentaFinal': precioVentaFinal,
@@ -71,7 +101,16 @@ class Producto {
       recetaId: map['recetaId'] as int,
       nombreReceta: map['nombreReceta'] as String? ?? '',
       costoBase: (map['costoBase'] as num).toDouble(),
+      minutosElaboracion: (map['minutosElaboracion'] as num?)?.toDouble() ?? 0,
+      costoHoraManoObra: (map['costoHoraManoObra'] as num?)?.toDouble() ?? 0,
+      costoManoObra: (map['costoManoObra'] as num?)?.toDouble() ?? 0,
+      costosVariables: (map['costosVariables'] as num?)?.toDouble() ?? 0,
+      costosFijos: (map['costosFijos'] as num?)?.toDouble() ?? 0,
       otrosCostos: (map['otrosCostos'] as num).toDouble(),
+      costoTotalProducto:
+          (map['costoTotalProducto'] as num?)?.toDouble() ??
+          (map['costoBase'] as num).toDouble() +
+              (map['otrosCostos'] as num).toDouble(),
       margenGanancia: (map['margenGanancia'] as num).toDouble(),
       precioVentaSugerido: (map['precioVentaSugerido'] as num).toDouble(),
       precioVentaFinal: (map['precioVentaFinal'] as num).toDouble(),
