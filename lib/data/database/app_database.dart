@@ -7,7 +7,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const String _databaseName = 'gastro_costos.db';
-  static const int _databaseVersion = 3;
+  static const int _databaseVersion = 7;
 
   Database? _database;
 
@@ -67,6 +67,7 @@ class AppDatabase {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nombre TEXT NOT NULL,
         recetaId INTEGER NOT NULL,
+        nombreReceta TEXT,
         costoBase REAL NOT NULL,
         otrosCostos REAL NOT NULL,
         margenGanancia REAL NOT NULL,
@@ -75,6 +76,9 @@ class AppDatabase {
         fechaRegistro TEXT NOT NULL
       )
     ''');
+
+    await _createProductoCostosTable(db);
+    await _createCostosFijosTable(db);
 
     await db.execute('''
       CREATE TABLE ventas (
@@ -122,6 +126,37 @@ class AppDatabase {
     if (oldVersion < 3) {
       await _createRecetaIngredientesTable(db);
     }
+
+    if (oldVersion < 4) {
+      await db.execute('ALTER TABLE productos ADD COLUMN nombreReceta TEXT');
+      await db.execute('''
+        UPDATE productos
+        SET nombreReceta = (
+          SELECT nombre
+          FROM recetas
+          WHERE recetas.id = productos.recetaId
+        )
+      ''');
+    }
+
+    if (oldVersion < 5) {
+      await _createProductoCostosTable(db);
+    } else if (oldVersion < 6) {
+      await db.execute(
+        "ALTER TABLE producto_costos ADD COLUMN tipoCosto TEXT NOT NULL DEFAULT 'variable'",
+      );
+      await db.execute('''
+        UPDATE producto_costos
+        SET tipoCosto = CASE
+          WHEN tipoCalculo = 'mensual_prorrateado' THEN 'fijo'
+          ELSE 'variable'
+        END
+      ''');
+    }
+
+    if (oldVersion < 7) {
+      await _createCostosFijosTable(db);
+    }
   }
 
   Future<void> _createRecetaIngredientesTable(Database db) async {
@@ -135,6 +170,39 @@ class AppDatabase {
         unidadUsada TEXT NOT NULL,
         costoUnitario REAL NOT NULL,
         costoTotal REAL NOT NULL,
+        fechaRegistro TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> _createProductoCostosTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE producto_costos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        productoId INTEGER NOT NULL,
+        nombre TEXT NOT NULL,
+        tipoCosto TEXT NOT NULL,
+        categoria TEXT NOT NULL,
+        tipoCalculo TEXT NOT NULL,
+        monto REAL NOT NULL,
+        unidadesEstimadasMes REAL,
+        minutosElaboracion REAL,
+        costoHora REAL,
+        porcentaje REAL,
+        costoCalculado REAL NOT NULL,
+        fechaRegistro TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> _createCostosFijosTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE costos_fijos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        categoria TEXT NOT NULL,
+        montoMensual REAL NOT NULL,
+        activo INTEGER NOT NULL,
         fechaRegistro TEXT NOT NULL
       )
     ''');

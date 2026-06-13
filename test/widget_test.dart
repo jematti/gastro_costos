@@ -10,5 +10,6 @@ void main() {
     expect(find.text('Dashboard'), findsOneWidget);
     expect(find.text('Ingredientes'), findsOneWidget);
     expect(find.text('Recetas'), findsOneWidget);
+    expect(find.text('Costos del negocio'), findsOneWidget);
   });
 }

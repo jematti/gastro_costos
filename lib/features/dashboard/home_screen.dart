@@ -4,6 +4,7 @@ import '../cierre_caja/cierre_caja_screen.dart';
 import '../gastos/gastos_screen.dart';
 import '../ingredientes/ingredientes_screen.dart';
 import '../productos/productos_screen.dart';
+import '../productos/costos_fijos_screen.dart';
 import '../recetas/recetas_screen.dart';
 import '../ventas/ventas_screen.dart';
 
@@ -32,6 +33,11 @@ class HomeScreen extends StatelessWidget {
         title: 'Productos / Menus',
         icon: Icons.restaurant_menu_outlined,
         builder: (_) => const ProductosScreen(),
+      ),
+      _ModuleItem(
+        title: 'Costos del negocio',
+        icon: Icons.account_balance_wallet_outlined,
+        builder: (_) => const CostosFijosScreen(),
       ),
       _ModuleItem(
         title: 'Ventas',

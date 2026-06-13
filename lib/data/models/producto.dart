@@ -3,6 +3,7 @@ class Producto {
     required this.id,
     required this.nombre,
     required this.recetaId,
+    required this.nombreReceta,
     required this.costoBase,
     required this.otrosCostos,
     required this.margenGanancia,
@@ -14,6 +15,7 @@ class Producto {
   final int id;
   final String nombre;
   final int recetaId;
+  final String nombreReceta;
   final double costoBase;
   final double otrosCostos;
   final double margenGanancia;
@@ -25,6 +27,7 @@ class Producto {
     int? id,
     String? nombre,
     int? recetaId,
+    String? nombreReceta,
     double? costoBase,
     double? otrosCostos,
     double? margenGanancia,
@@ -36,6 +39,7 @@ class Producto {
       id: id ?? this.id,
       nombre: nombre ?? this.nombre,
       recetaId: recetaId ?? this.recetaId,
+      nombreReceta: nombreReceta ?? this.nombreReceta,
       costoBase: costoBase ?? this.costoBase,
       otrosCostos: otrosCostos ?? this.otrosCostos,
       margenGanancia: margenGanancia ?? this.margenGanancia,
@@ -50,6 +54,7 @@ class Producto {
       'id': id,
       'nombre': nombre,
       'recetaId': recetaId,
+      'nombreReceta': nombreReceta,
       'costoBase': costoBase,
       'otrosCostos': otrosCostos,
       'margenGanancia': margenGanancia,
@@ -64,6 +69,7 @@ class Producto {
       id: map['id'] as int,
       nombre: map['nombre'] as String,
       recetaId: map['recetaId'] as int,
+      nombreReceta: map['nombreReceta'] as String? ?? '',
       costoBase: (map['costoBase'] as num).toDouble(),
       otrosCostos: (map['otrosCostos'] as num).toDouble(),
       margenGanancia: (map['margenGanancia'] as num).toDouble(),
