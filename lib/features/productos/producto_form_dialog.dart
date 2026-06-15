@@ -40,7 +40,10 @@ class ProductoFormDialog extends StatefulWidget {
 }
 
 class _ProductoFormDialogState extends State<ProductoFormDialog> {
-  final _formKey = GlobalKey<FormState>();
+  final _productoKey = GlobalKey<FormState>();
+  final _manoObraKey = GlobalKey<FormState>();
+  final _costosFijosKey = GlobalKey<FormState>();
+  final _precioKey = GlobalKey<FormState>();
   late final TextEditingController _nombreController;
   late final TextEditingController _minutosController;
   late final TextEditingController _costoHoraController;
@@ -51,8 +54,9 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   Receta? _recetaSeleccionada;
   bool _actualizandoPrecioFinal = false;
   bool _precioFinalEditado = false;
+  int _pasoActual = 0;
 
-  double get _costoBase => _recetaSeleccionada?.costoPorPorcion ?? 0;
+  double get _costoReceta => _recetaSeleccionada?.costoPorPorcion ?? 0;
   double get _minutos => _numero(_minutosController.text) ?? 0;
   double get _costoHora => _numero(_costoHoraController.text) ?? 0;
   double get _margen => _numero(_margenController.text) ?? 0;
@@ -64,7 +68,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
       _costosVariables.fold(0, (total, item) => total + item.costoCalculado);
   double get _otrosCostos =>
       _costoManoObra + _totalCostosFijos + _totalCostosVariables;
-  double get _costoTotal => _costoBase + _otrosCostos;
+  double get _costoTotal => _costoReceta + _otrosCostos;
   double get _precioSugerido => _costoTotal * (1 + _margen / 100);
 
   @override
@@ -104,6 +108,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     _costoHoraController.addListener(_recalcular);
     _margenController.addListener(_recalcular);
     _precioFinalController.addListener(_registrarPrecioFinalEditado);
+    _recalcularVariables();
   }
 
   List<_CostoFijoSeleccion> _crearSeleccionesCostosFijos() {
@@ -172,7 +177,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   }
 
   void _recalcularVariables() {
-    var subtotal = _costoBase + _costoManoObra + _totalCostosFijos;
+    var subtotal = _costoReceta + _costoManoObra + _totalCostosFijos;
     _costosVariables = _costosVariables.map((costo) {
       final calculado = costo.tipoCalculo == 'porcentaje'
           ? subtotal * ((costo.porcentaje ?? 0) / 100)
@@ -190,7 +195,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   Future<void> _abrirCostoVariable({int? index}) async {
     final costo = index == null ? null : _costosVariables[index];
     final subtotalReferencia =
-        _costoBase +
+        _costoReceta +
         _costoManoObra +
         _totalCostosFijos +
         _costosVariables
@@ -203,10 +208,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
         subtotalReferencia: subtotalReferencia,
       ),
     );
-
-    if (resultado == null) {
-      return;
-    }
+    if (resultado == null) return;
 
     if (index == null) {
       _costosVariables.add(resultado);
@@ -230,25 +232,50 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     return numero == null || numero < 0 ? 'Debe ser mayor o igual a 0' : null;
   }
 
-  bool _validarCostosFijos() {
-    var validos = true;
-    for (final item in _costosFijos.where((item) => item.seleccionado)) {
-      final unidades = _numero(item.controller.text);
-      if (unidades == null || unidades <= 0) {
-        validos = false;
-      }
+  bool _validarPaso(int paso) {
+    switch (paso) {
+      case 0:
+        return (_productoKey.currentState?.validate() ?? false) &&
+            _recetaSeleccionada != null;
+      case 1:
+        return _manoObraKey.currentState?.validate() ?? false;
+      case 2:
+        return _costosFijosKey.currentState?.validate() ?? true;
+      case 3:
+        return _costosVariables.every((costo) {
+          final valor = costo.tipoCalculo == 'porcentaje'
+              ? costo.porcentaje
+              : costo.monto;
+          return valor != null && valor >= 0;
+        });
+      case 4:
+        return _precioKey.currentState?.validate() ?? false;
+      default:
+        return false;
     }
-    return validos;
+  }
+
+  void _continuar() {
+    if (!_validarPaso(_pasoActual)) {
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Revisa los datos de este paso.')),
+      );
+      return;
+    }
+    if (_pasoActual == 4) {
+      _guardar();
+    } else {
+      setState(() => _pasoActual++);
+    }
   }
 
   void _guardar() {
-    final formularioValido = _formKey.currentState!.validate();
-    final costosFijosValidos = _validarCostosFijos();
-    if (!formularioValido ||
-        !costosFijosValidos ||
-        _recetaSeleccionada == null) {
-      setState(() {});
-      return;
+    for (var paso = 0; paso < 5; paso++) {
+      if (!_validarPaso(paso)) {
+        setState(() => _pasoActual = paso);
+        return;
+      }
     }
 
     _recalcularVariables();
@@ -277,7 +304,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
           nombre: _nombreController.text.trim(),
           recetaId: receta.id,
           nombreReceta: receta.nombre,
-          costoBase: _costoBase,
+          costoBase: _costoReceta,
           minutosElaboracion: _minutos,
           costoHoraManoObra: _costoHora,
           costoManoObra: _costoManoObra,
@@ -298,230 +325,61 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final receta = _recetaSeleccionada;
-
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       title: Text(
         widget.producto == null ? 'Crear producto' : 'Editar producto',
       ),
       content: SizedBox(
-        width: 620,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextFormField(
-                  controller: _nombreController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nombre del producto',
-                  ),
-                  validator: _obligatorio,
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<Receta>(
-                  initialValue: receta,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Receta base'),
-                  items: widget.recetas
-                      .map(
-                        (item) => DropdownMenuItem(
-                          value: item,
-                          child: Text(item.nombre),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: _seleccionarReceta,
-                  validator: (value) =>
-                      value == null ? 'Selecciona una receta' : null,
-                ),
-                if (receta != null) ...[
-                  const SizedBox(height: 8),
-                  Text('Nombre receta: ${receta.nombre}'),
-                  Text(
-                    'Costo total receta: ${receta.costoTotal.toStringAsFixed(2)} Bs',
-                  ),
-                  Text(
-                    'Costo por porción: ${receta.costoPorPorcion.toStringAsFixed(2)} Bs',
-                  ),
-                ],
-                const SizedBox(height: 18),
-                Text(
-                  'Mano de obra',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                _NumberField(
-                  controller: _minutosController,
-                  label: 'Minutos de elaboración',
-                  suffix: 'min',
-                  validator: _mayorACero,
-                ),
-                _NumberField(
-                  controller: _costoHoraController,
-                  label: 'Costo por hora',
-                  suffix: 'Bs',
-                  validator: _mayorACero,
-                ),
-                Text(
-                  'Costo mano de obra: ${_costoManoObra.toStringAsFixed(2)} Bs',
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'Costos del negocio',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                if (_costosFijos.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 10),
-                    child: Text('No hay costos activos para seleccionar.'),
-                  )
-                else
-                  ..._costosFijos.map(
-                    (item) => Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Column(
-                          children: [
-                            CheckboxListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(item.costo.nombre),
-                              subtitle: Text(
-                                '${item.costo.montoMensual.toStringAsFixed(2)} Bs / mes',
-                              ),
-                              value: item.seleccionado,
-                              onChanged: (value) {
-                                item.seleccionado = value ?? false;
-                                _recalcular();
-                              },
-                            ),
-                            if (item.seleccionado)
-                              TextFormField(
-                                controller: item.controller,
-                                decoration: InputDecoration(
-                                  labelText: 'Unidades estimadas al mes',
-                                  helperText:
-                                      'Prorrateado: ${item.costoProrrateado.toStringAsFixed(2)} Bs',
-                                ),
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                      decimal: true,
-                                    ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                    RegExp(r'[0-9.,]'),
-                                  ),
-                                ],
-                                validator: (_) =>
-                                    item.seleccionado && item.unidades <= 0
-                                    ? 'Debe ser mayor a 0'
-                                    : null,
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Costos variables',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: _abrirCostoVariable,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Agregar costo variable'),
-                    ),
-                  ],
-                ),
-                if (_costosVariables.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 10),
-                    child: Text('No hay costos variables.'),
-                  )
-                else
-                  ...List.generate(_costosVariables.length, (index) {
-                    final costo = _costosVariables[index];
-                    return Card(
-                      child: ListTile(
-                        title: Text(costo.nombre),
-                        subtitle: Text(
-                          '${costo.tipoCalculo == 'porcentaje' ? 'Porcentaje' : 'Por unidad'} | '
-                          '${costo.costoCalculado.toStringAsFixed(2)} Bs',
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              onPressed: () =>
-                                  _abrirCostoVariable(index: index),
-                              icon: const Icon(Icons.edit_outlined),
-                            ),
-                            IconButton(
-                              onPressed: () {
-                                _costosVariables.removeAt(index);
-                                _recalcular();
-                              },
-                              icon: const Icon(Icons.delete_outline),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }),
-                const SizedBox(height: 12),
-                _NumberField(
-                  controller: _margenController,
-                  label: 'Margen de ganancia',
-                  suffix: '%',
-                  validator: _noNegativo,
-                ),
-                const SizedBox(height: 12),
-                Card(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+        width: 720,
+        height: MediaQuery.sizeOf(context).height * 0.72,
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Stepper(
+                  currentStep: _pasoActual,
+                  physics: const NeverScrollableScrollPhysics(),
+                  onStepTapped: (paso) {
+                    if (paso <= _pasoActual || _validarPaso(_pasoActual)) {
+                      setState(() => _pasoActual = paso);
+                    }
+                  },
+                  onStepContinue: _continuar,
+                  onStepCancel: _pasoActual == 0
+                      ? null
+                      : () => setState(() => _pasoActual--),
+                  controlsBuilder: (context, details) => Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Row(
                       children: [
-                        Text(
-                          'Costo receta: ${_costoBase.toStringAsFixed(2)} Bs',
+                        FilledButton(
+                          onPressed: details.onStepContinue,
+                          child: Text(
+                            _pasoActual == 4 ? 'Guardar producto' : 'Continuar',
+                          ),
                         ),
-                        Text(
-                          'Mano de obra: ${_costoManoObra.toStringAsFixed(2)} Bs',
-                        ),
-                        Text(
-                          'Costos fijos: ${_totalCostosFijos.toStringAsFixed(2)} Bs',
-                        ),
-                        Text(
-                          'Costos variables: ${_totalCostosVariables.toStringAsFixed(2)} Bs',
-                        ),
-                        Text(
-                          'Costo total producto: ${_costoTotal.toStringAsFixed(2)} Bs',
-                        ),
-                        Text('Margen: ${_margen.toStringAsFixed(0)}%'),
-                        Text(
-                          'Precio sugerido: ${_precioSugerido.toStringAsFixed(2)} Bs',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                        if (_pasoActual > 0) ...[
+                          const SizedBox(width: 8),
+                          TextButton(
+                            onPressed: details.onStepCancel,
+                            child: const Text('Volver'),
+                          ),
+                        ],
                       ],
                     ),
                   ),
+                  steps: _crearPasos(),
                 ),
-                _NumberField(
-                  controller: _precioFinalController,
-                  label: 'Precio final',
-                  suffix: 'Bs',
-                  validator: _mayorACero,
-                  onSubmitted: (_) => _guardar(),
-                ),
-              ],
+              ),
             ),
-          ),
+            const Divider(height: 1),
+            _ResumenFijo(
+              costoTotal: _costoTotal,
+              precioSugerido: _precioSugerido,
+              precioFinal: _numero(_precioFinalController.text) ?? 0,
+            ),
+          ],
         ),
       ),
       actions: [
@@ -529,8 +387,291 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancelar'),
         ),
-        FilledButton(onPressed: _guardar, child: const Text('Guardar')),
       ],
+    );
+  }
+
+  List<Step> _crearPasos() => [
+    Step(
+      title: const Text('Producto y receta'),
+      subtitle: const Text('Define qué vas a vender'),
+      isActive: _pasoActual >= 0,
+      state: _estadoPaso(0),
+      content: Form(
+        key: _productoKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextFormField(
+              controller: _nombreController,
+              decoration: const InputDecoration(
+                labelText: 'Nombre del producto',
+              ),
+              validator: _obligatorio,
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<Receta>(
+              initialValue: _recetaSeleccionada,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Seleccionar receta',
+              ),
+              items: widget.recetas
+                  .map(
+                    (receta) => DropdownMenuItem(
+                      value: receta,
+                      child: Text(receta.nombre),
+                    ),
+                  )
+                  .toList(),
+              onChanged: _seleccionarReceta,
+              validator: (value) =>
+                  value == null ? 'Selecciona una receta' : null,
+            ),
+            if (_recetaSeleccionada case final receta?) ...[
+              const SizedBox(height: 12),
+              _LineaResumen('Costo total de receta', receta.costoTotal),
+              Text('Porciones: ${receta.porciones}'),
+              _LineaResumen('Costo por porción', receta.costoPorPorcion),
+              const _Ayuda(
+                texto:
+                    'Este será el costo base del producto. Sale del costo por porción de la receta.',
+              ),
+              _Resultado(etiqueta: 'Costo base', valor: _costoReceta),
+            ],
+          ],
+        ),
+      ),
+    ),
+    Step(
+      title: const Text('Mano de obra'),
+      subtitle: const Text('Calcula el valor del tiempo de preparación'),
+      isActive: _pasoActual >= 1,
+      state: _estadoPaso(1),
+      content: Form(
+        key: _manoObraKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const _Ayuda(
+              texto:
+                  'La mano de obra calcula cuánto vale el tiempo usado para preparar este producto.',
+            ),
+            _NumberField(
+              controller: _minutosController,
+              label: '¿Cuánto tiempo toma preparar?',
+              suffix: 'min',
+              validator: _mayorACero,
+            ),
+            _NumberField(
+              controller: _costoHoraController,
+              label: '¿Cuánto vale una hora de trabajo?',
+              suffix: 'Bs',
+              validator: _mayorACero,
+            ),
+            const Text('Mano de obra = (minutos / 60) x costo por hora'),
+            Text(
+              '${_minutos.toStringAsFixed(0)} minutos / 60 x ${_costoHora.toStringAsFixed(2)} Bs = ${_costoManoObra.toStringAsFixed(2)} Bs',
+            ),
+            _Resultado(
+              etiqueta: 'Costo de mano de obra',
+              valor: _costoManoObra,
+            ),
+          ],
+        ),
+      ),
+    ),
+    Step(
+      title: const Text('Costos que se pagan cada mes'),
+      subtitle: const Text('Reparte alquiler, luz, agua y otros pagos'),
+      isActive: _pasoActual >= 2,
+      state: _estadoPaso(2),
+      content: Form(
+        key: _costosFijosKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const _Ayuda(
+              texto:
+                  'Los costos fijos son pagos mensuales como alquiler, luz, agua o gas. La app reparte ese gasto entre las unidades que esperas vender al mes.',
+            ),
+            const Text(
+              'Costo fijo por producto = monto mensual / unidades estimadas al mes',
+            ),
+            if (_costosFijos.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Text('No hay costos activos para seleccionar.'),
+              )
+            else
+              ..._costosFijos.map(_crearCostoFijo),
+            _Resultado(
+              etiqueta: 'Subtotal de costos mensuales',
+              valor: _totalCostosFijos,
+            ),
+          ],
+        ),
+      ),
+    ),
+    Step(
+      title: const Text('Costos que aparecen por cada venta'),
+      subtitle: const Text('Envases, bolsas, delivery o comisiones'),
+      isActive: _pasoActual >= 3,
+      state: _estadoPaso(3),
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _Ayuda(
+            texto:
+                'Estos costos aparecen cada vez que vendes un producto. Ejemplo: envase, bolsa, delivery o comisión.',
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: _abrirCostoVariable,
+              icon: const Icon(Icons.add),
+              label: const Text('Agregar costo por venta'),
+            ),
+          ),
+          if (_costosVariables.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text('No agregaste costos por venta.'),
+            )
+          else
+            ...List.generate(_costosVariables.length, _crearCostoVariable),
+          const Text(
+            'Por unidad: Envase = 1.00 Bs. Porcentaje: Comisión 10% sobre el subtotal actual.',
+          ),
+          _Resultado(
+            etiqueta: 'Subtotal de costos por venta',
+            valor: _totalCostosVariables,
+          ),
+        ],
+      ),
+    ),
+    Step(
+      title: const Text('Precio final'),
+      subtitle: const Text('Revisa el costo y define tu ganancia'),
+      isActive: _pasoActual >= 4,
+      state: _estadoPaso(4),
+      content: Form(
+        key: _precioKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _LineaResumen('Costo de receta', _costoReceta),
+            _LineaResumen('Mano de obra', _costoManoObra),
+            _LineaResumen('Costos mensuales', _totalCostosFijos),
+            _LineaResumen('Costos por venta', _totalCostosVariables),
+            const Divider(),
+            _LineaResumen(
+              'Costo total del producto',
+              _costoTotal,
+              negrita: true,
+            ),
+            _NumberField(
+              controller: _margenController,
+              label: 'Margen de ganancia',
+              suffix: '%',
+              validator: _noNegativo,
+            ),
+            const Text('Precio sugerido = costo total x (1 + margen / 100)'),
+            _Resultado(etiqueta: 'Precio sugerido', valor: _precioSugerido),
+            _NumberField(
+              controller: _precioFinalController,
+              label: 'Precio final de venta',
+              suffix: 'Bs',
+              validator: _mayorACero,
+              onSubmitted: (_) => _guardar(),
+            ),
+          ],
+        ),
+      ),
+    ),
+  ];
+
+  StepState _estadoPaso(int paso) {
+    if (_pasoActual > paso) return StepState.complete;
+    return _pasoActual == paso ? StepState.editing : StepState.indexed;
+  }
+
+  Widget _crearCostoFijo(_CostoFijoSeleccion item) {
+    return Card(
+      margin: const EdgeInsets.only(top: 8),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(item.costo.nombre),
+              subtitle: Text(
+                '${item.costo.montoMensual.toStringAsFixed(2)} Bs al mes',
+              ),
+              value: item.seleccionado,
+              onChanged: (value) {
+                item.seleccionado = value ?? false;
+                _recalcular();
+              },
+            ),
+            if (item.seleccionado) ...[
+              TextFormField(
+                controller: item.controller,
+                decoration: const InputDecoration(
+                  labelText: '¿Cuántos productos esperas vender al mes?',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                ],
+                validator: (_) => item.unidades <= 0
+                    ? 'Ingresa una cantidad mayor a 0'
+                    : null,
+              ),
+              Text(
+                '${item.costo.montoMensual.toStringAsFixed(2)} Bs / ${item.unidades.toStringAsFixed(0)} ventas = ${item.costoProrrateado.toStringAsFixed(2)} Bs por producto',
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _crearCostoVariable(int index) {
+    final costo = _costosVariables[index];
+    final detalle = costo.tipoCalculo == 'porcentaje'
+        ? '${(costo.porcentaje ?? 0).toStringAsFixed(2)}% sobre subtotal'
+        : '${(costo.monto ?? 0).toStringAsFixed(2)} Bs por producto';
+    return Card(
+      child: ListTile(
+        title: Text(costo.nombre),
+        subtitle: Text(
+          '$detalle\nResultado: ${costo.costoCalculado.toStringAsFixed(2)} Bs',
+        ),
+        isThreeLine: true,
+        trailing: Wrap(
+          children: [
+            IconButton(
+              tooltip: 'Editar',
+              onPressed: () => _abrirCostoVariable(index: index),
+              icon: const Icon(Icons.edit_outlined),
+            ),
+            IconButton(
+              tooltip: 'Eliminar',
+              onPressed: () {
+                _costosVariables.removeAt(index);
+                _recalcular();
+              },
+              icon: const Icon(Icons.delete_outline),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -565,15 +706,15 @@ class _CostoVariableDialog extends StatefulWidget {
 }
 
 class _CostoVariableDialogState extends State<_CostoVariableDialog> {
-  static const _categorias = [
-    'envase',
-    'delivery',
-    'comision',
-    'transporte',
-    'empaque',
-    'merma',
-    'otro',
-  ];
+  static const _categorias = {
+    'envase': 'Envase',
+    'delivery': 'Delivery',
+    'comision': 'Comisión',
+    'transporte': 'Transporte',
+    'empaque': 'Empaque',
+    'merma': 'Merma',
+    'otro': 'Otro',
+  };
 
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nombreController;
@@ -593,6 +734,7 @@ class _CostoVariableDialogState extends State<_CostoVariableDialog> {
     final costo = widget.costo;
     _nombreController = TextEditingController(text: costo?.nombre ?? '');
     _categoria = costo?.categoria ?? 'otro';
+    if (!_categorias.containsKey(_categoria)) _categoria = 'otro';
     _tipo = costo?.tipoCalculo ?? 'por_unidad';
     _valorController = TextEditingController(
       text: costo == null
@@ -614,9 +756,7 @@ class _CostoVariableDialogState extends State<_CostoVariableDialog> {
   void _actualizar() => setState(() {});
 
   void _guardar() {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
     final anterior = widget.costo;
     Navigator.of(context).pop(
       ProductoCostoVariable(
@@ -637,69 +777,72 @@ class _CostoVariableDialogState extends State<_CostoVariableDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(
-        widget.costo == null
-            ? 'Agregar costo variable'
-            : 'Editar costo variable',
+        widget.costo == null ? 'Agregar costo por venta' : 'Editar costo',
       ),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: _nombreController,
-              decoration: const InputDecoration(labelText: 'Nombre'),
-              validator: (value) => value == null || value.trim().isEmpty
-                  ? 'Campo obligatorio'
-                  : null,
-            ),
-            DropdownButtonFormField<String>(
-              initialValue: _categoria,
-              decoration: const InputDecoration(labelText: 'Categoría'),
-              items: _categorias
-                  .map(
-                    (value) =>
-                        DropdownMenuItem(value: value, child: Text(value)),
-                  )
-                  .toList(),
-              onChanged: (value) => setState(() => _categoria = value!),
-            ),
-            DropdownButtonFormField<String>(
-              initialValue: _tipo,
-              decoration: const InputDecoration(labelText: 'Tipo de cálculo'),
-              items: const [
-                DropdownMenuItem(
-                  value: 'por_unidad',
-                  child: Text('Por unidad'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _nombreController,
+                decoration: const InputDecoration(
+                  labelText: 'Nombre del costo',
+                  hintText: 'Ej. Envase',
                 ),
-                DropdownMenuItem(
-                  value: 'porcentaje',
-                  child: Text('Porcentaje'),
-                ),
-              ],
-              onChanged: (value) => setState(() => _tipo = value!),
-            ),
-            _NumberField(
-              controller: _valorController,
-              label: _tipo == 'porcentaje' ? 'Porcentaje' : 'Monto',
-              suffix: _tipo == 'porcentaje' ? '%' : 'Bs',
-              validator: (value) {
-                final numero = double.tryParse(
-                  (value ?? '').trim().replaceAll(',', '.'),
-                );
-                return numero == null || numero < 0
-                    ? 'Debe ser mayor o igual a 0'
-                    : null;
-              },
-            ),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Costo calculado: ${_calculado.toStringAsFixed(2)} Bs',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Campo obligatorio'
+                    : null,
               ),
-            ),
-          ],
+              DropdownButtonFormField<String>(
+                initialValue: _categoria,
+                decoration: const InputDecoration(labelText: 'Categoría'),
+                items: _categorias.entries
+                    .map(
+                      (entry) => DropdownMenuItem(
+                        value: entry.key,
+                        child: Text(entry.value),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) => setState(() => _categoria = value!),
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: _tipo,
+                decoration: const InputDecoration(
+                  labelText: '¿Cómo se calcula?',
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'por_unidad',
+                    child: Text('Monto por producto'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'porcentaje',
+                    child: Text('Porcentaje sobre subtotal'),
+                  ),
+                ],
+                onChanged: (value) => setState(() => _tipo = value!),
+              ),
+              _NumberField(
+                controller: _valorController,
+                label: _tipo == 'porcentaje'
+                    ? 'Porcentaje'
+                    : 'Monto por producto',
+                suffix: _tipo == 'porcentaje' ? '%' : 'Bs',
+                validator: (value) {
+                  final numero = double.tryParse(
+                    (value ?? '').trim().replaceAll(',', '.'),
+                  );
+                  return numero == null || numero < 0
+                      ? 'Debe ser mayor o igual a 0'
+                      : null;
+                },
+              ),
+              _Resultado(etiqueta: 'Costo calculado', valor: _calculado),
+            ],
+          ),
         ),
       ),
       actions: [
@@ -730,13 +873,132 @@ class _NumberField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(labelText: label, suffixText: suffix),
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-      validator: validator,
-      onFieldSubmitted: onSubmitted,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(labelText: label, suffixText: suffix),
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+        ],
+        validator: validator,
+        onFieldSubmitted: onSubmitted,
+      ),
+    );
+  }
+}
+
+class _Ayuda extends StatelessWidget {
+  const _Ayuda({required this.texto});
+
+  final String texto;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline, size: 20),
+          const SizedBox(width: 8),
+          Expanded(child: Text(texto)),
+        ],
+      ),
+    );
+  }
+}
+
+class _Resultado extends StatelessWidget {
+  const _Resultado({required this.etiqueta, required this.valor});
+
+  final String etiqueta;
+  final double valor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      margin: const EdgeInsets.only(top: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Text(
+          '$etiqueta: ${valor.toStringAsFixed(2)} Bs',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+}
+
+class _LineaResumen extends StatelessWidget {
+  const _LineaResumen(this.etiqueta, this.valor, {this.negrita = false});
+
+  final String etiqueta;
+  final double valor;
+  final bool negrita;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              etiqueta,
+              style: negrita
+                  ? const TextStyle(fontWeight: FontWeight.bold)
+                  : null,
+            ),
+          ),
+          Text(
+            '${valor.toStringAsFixed(2)} Bs',
+            style: negrita
+                ? const TextStyle(fontWeight: FontWeight.bold)
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ResumenFijo extends StatelessWidget {
+  const _ResumenFijo({
+    required this.costoTotal,
+    required this.precioSugerido,
+    required this.precioFinal,
+  });
+
+  final double costoTotal;
+  final double precioSugerido;
+  final double precioFinal;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        spacing: 20,
+        runSpacing: 6,
+        children: [
+          Text('Costo total: ${costoTotal.toStringAsFixed(2)} Bs'),
+          Text('Sugerido: ${precioSugerido.toStringAsFixed(2)} Bs'),
+          Text(
+            'Precio final: ${precioFinal.toStringAsFixed(2)} Bs',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
     );
   }
 }
