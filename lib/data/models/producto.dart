@@ -10,6 +10,7 @@ class Producto {
     required this.costoManoObra,
     required this.costosVariables,
     required this.costosFijos,
+    required this.unidadesEstimadasMes,
     required this.otrosCostos,
     required this.costoTotalProducto,
     required this.margenGanancia,
@@ -28,6 +29,7 @@ class Producto {
   final double costoManoObra;
   final double costosVariables;
   final double costosFijos;
+  final double unidadesEstimadasMes;
   final double otrosCostos;
   final double costoTotalProducto;
   final double margenGanancia;
@@ -46,6 +48,7 @@ class Producto {
     double? costoManoObra,
     double? costosVariables,
     double? costosFijos,
+    double? unidadesEstimadasMes,
     double? otrosCostos,
     double? costoTotalProducto,
     double? margenGanancia,
@@ -64,6 +67,7 @@ class Producto {
       costoManoObra: costoManoObra ?? this.costoManoObra,
       costosVariables: costosVariables ?? this.costosVariables,
       costosFijos: costosFijos ?? this.costosFijos,
+      unidadesEstimadasMes: unidadesEstimadasMes ?? this.unidadesEstimadasMes,
       otrosCostos: otrosCostos ?? this.otrosCostos,
       costoTotalProducto: costoTotalProducto ?? this.costoTotalProducto,
       margenGanancia: margenGanancia ?? this.margenGanancia,
@@ -85,6 +89,7 @@ class Producto {
       'costoManoObra': costoManoObra,
       'costosVariables': costosVariables,
       'costosFijos': costosFijos,
+      'unidadesEstimadasMes': unidadesEstimadasMes,
       'otrosCostos': otrosCostos,
       'costoTotalProducto': costoTotalProducto,
       'margenGanancia': margenGanancia,
@@ -106,6 +111,8 @@ class Producto {
       costoManoObra: (map['costoManoObra'] as num?)?.toDouble() ?? 0,
       costosVariables: (map['costosVariables'] as num?)?.toDouble() ?? 0,
       costosFijos: (map['costosFijos'] as num?)?.toDouble() ?? 0,
+      unidadesEstimadasMes:
+          (map['unidadesEstimadasMes'] as num?)?.toDouble() ?? 0,
       otrosCostos: (map['otrosCostos'] as num).toDouble(),
       costoTotalProducto:
           (map['costoTotalProducto'] as num?)?.toDouble() ??

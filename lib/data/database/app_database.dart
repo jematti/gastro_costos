@@ -7,7 +7,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const String _databaseName = 'gastro_costos.db';
-  static const int _databaseVersion = 8;
+  static const int _databaseVersion = 9;
 
   Database? _database;
 
@@ -74,6 +74,7 @@ class AppDatabase {
         costoManoObra REAL NOT NULL,
         costosVariables REAL NOT NULL,
         costosFijos REAL NOT NULL,
+        unidadesEstimadasMes REAL NOT NULL DEFAULT 0,
         otrosCostos REAL NOT NULL,
         costoTotalProducto REAL NOT NULL,
         margenGanancia REAL NOT NULL,
@@ -191,6 +192,12 @@ class AppDatabase {
       ''');
       await _createProductoCostosFijosTable(db);
       await _createProductoCostosVariablesTable(db);
+    }
+
+    if (oldVersion < 9) {
+      await db.execute(
+        'ALTER TABLE productos ADD COLUMN unidadesEstimadasMes REAL NOT NULL DEFAULT 0',
+      );
     }
   }
 

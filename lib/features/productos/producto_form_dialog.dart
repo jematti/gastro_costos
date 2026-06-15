@@ -47,6 +47,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   late final TextEditingController _nombreController;
   late final TextEditingController _minutosController;
   late final TextEditingController _costoHoraController;
+  late final TextEditingController _unidadesMesController;
   late final TextEditingController _margenController;
   late final TextEditingController _precioFinalController;
   late final List<_CostoFijoSeleccion> _costosFijos;
@@ -59,11 +60,17 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   double get _costoReceta => _recetaSeleccionada?.costoPorPorcion ?? 0;
   double get _minutos => _numero(_minutosController.text) ?? 0;
   double get _costoHora => _numero(_costoHoraController.text) ?? 0;
+  double get _unidadesMes => _numero(_unidadesMesController.text) ?? 0;
   double get _margen => _numero(_margenController.text) ?? 0;
   double get _costoManoObra => (_minutos / 60) * _costoHora;
+  double get _totalMensualCostosFijos => _costosFijos
+      .where((item) => item.seleccionado)
+      .fold(0, (total, item) => total + item.costo.montoMensual);
   double get _totalCostosFijos => _costosFijos
       .where((item) => item.seleccionado)
       .fold(0, (total, item) => total + item.costoProrrateado);
+  bool get _hayCostosFijosSeleccionados =>
+      _costosFijos.any((item) => item.seleccionado);
   double get _totalCostosVariables =>
       _costosVariables.fold(0, (total, item) => total + item.costoCalculado);
   double get _otrosCostos =>
@@ -86,6 +93,9 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
           ? ''
           : producto.costoHoraManoObra.toStringAsFixed(2),
     );
+    _unidadesMesController = TextEditingController(
+      text: _unidadesInicialesMes(producto),
+    );
     _margenController = TextEditingController(
       text: producto?.margenGanancia.toStringAsFixed(0) ?? '0',
     );
@@ -106,9 +116,25 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
 
     _minutosController.addListener(_recalcular);
     _costoHoraController.addListener(_recalcular);
+    _unidadesMesController.addListener(_recalcular);
     _margenController.addListener(_recalcular);
     _precioFinalController.addListener(_registrarPrecioFinalEditado);
     _recalcularVariables();
+  }
+
+  String _unidadesInicialesMes(Producto? producto) {
+    final unidadesProducto = producto?.unidadesEstimadasMes ?? 0;
+    if (unidadesProducto > 0) {
+      return unidadesProducto.toStringAsFixed(0);
+    }
+
+    final unidadesGuardadas = widget.costosFijosIniciales
+        .where((item) => item.unidadesEstimadasMes > 0)
+        .map((item) => item.unidadesEstimadasMes)
+        .firstOrNull;
+    return unidadesGuardadas == null
+        ? ''
+        : unidadesGuardadas.toStringAsFixed(0);
   }
 
   List<_CostoFijoSeleccion> _crearSeleccionesCostosFijos() {
@@ -135,9 +161,8 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
       final seleccion = _CostoFijoSeleccion(
         costo: costo,
         seleccionado: asociado != null,
-        unidades: asociado?.unidadesEstimadasMes,
+        unidadesMes: () => _unidadesMes,
       );
-      seleccion.controller.addListener(_recalcular);
       return seleccion;
     }).toList();
   }
@@ -147,11 +172,9 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     _nombreController.dispose();
     _minutosController.dispose();
     _costoHoraController.dispose();
+    _unidadesMesController.dispose();
     _margenController.dispose();
     _precioFinalController.dispose();
-    for (final item in _costosFijos) {
-      item.controller.dispose();
-    }
     super.dispose();
   }
 
@@ -232,6 +255,16 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     return numero == null || numero < 0 ? 'Debe ser mayor o igual a 0' : null;
   }
 
+  String? _validarUnidadesMes(String? value) {
+    if (!_hayCostosFijosSeleccionados) {
+      return null;
+    }
+    final numero = _numero(value ?? '');
+    return numero == null || numero <= 0
+        ? 'Ingresa una cantidad mayor a 0'
+        : null;
+  }
+
   bool _validarPaso(int paso) {
     switch (paso) {
       case 0:
@@ -240,7 +273,10 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
       case 1:
         return _manoObraKey.currentState?.validate() ?? false;
       case 2:
-        return _costosFijosKey.currentState?.validate() ?? true;
+        if (!(_costosFijosKey.currentState?.validate() ?? true)) {
+          return false;
+        }
+        return !_hayCostosFijosSeleccionados || _unidadesMes > 0;
       case 3:
         return _costosVariables.every((costo) {
           final valor = costo.tipoCalculo == 'porcentaje'
@@ -290,7 +326,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
             costoFijoId: item.costo.id,
             nombreCostoFijo: item.costo.nombre,
             montoMensual: item.costo.montoMensual,
-            unidadesEstimadasMes: item.unidades,
+            unidadesEstimadasMes: _unidadesMes,
             costoProrrateado: item.costoProrrateado,
             fechaRegistro: DateTime.now(),
           ),
@@ -310,6 +346,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
           costoManoObra: _costoManoObra,
           costosVariables: _totalCostosVariables,
           costosFijos: _totalCostosFijos,
+          unidadesEstimadasMes: _unidadesMes,
           otrosCostos: _otrosCostos,
           costoTotalProducto: _costoTotal,
           margenGanancia: _margen,
@@ -495,6 +532,16 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
               texto:
                   'Los costos fijos son pagos mensuales como alquiler, luz, agua o gas. La app reparte ese gasto entre las unidades que esperas vender al mes.',
             ),
+            const _Ayuda(
+              texto:
+                  'Este número se usa para repartir los gastos mensuales entre las unidades que esperas vender.',
+            ),
+            _NumberField(
+              controller: _unidadesMesController,
+              label:
+                  '¿Cuántas unidades de este producto esperas vender al mes?',
+              validator: _validarUnidadesMes,
+            ),
             const Text(
               'Costo fijo por producto = monto mensual / unidades estimadas al mes',
             ),
@@ -505,9 +552,27 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
               )
             else
               ..._costosFijos.map(_crearCostoFijo),
-            _Resultado(
-              etiqueta: 'Subtotal de costos mensuales',
-              valor: _totalCostosFijos,
+            Card(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              margin: const EdgeInsets.only(top: 12),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Total costos fijos seleccionados: ${_totalMensualCostosFijos.toStringAsFixed(2)} Bs/mes',
+                    ),
+                    Text(
+                      'Unidades estimadas al mes: ${_unidadesMes.toStringAsFixed(0)}',
+                    ),
+                    Text(
+                      'Costo fijo por producto: ${_totalCostosFijos.toStringAsFixed(2)} Bs',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -608,7 +673,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
               contentPadding: EdgeInsets.zero,
               title: Text(item.costo.nombre),
               subtitle: Text(
-                '${item.costo.montoMensual.toStringAsFixed(2)} Bs al mes',
+                '${item.costo.montoMensual.toStringAsFixed(2)} Bs/mes',
               ),
               value: item.seleccionado,
               onChanged: (value) {
@@ -616,26 +681,10 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                 _recalcular();
               },
             ),
-            if (item.seleccionado) ...[
-              TextFormField(
-                controller: item.controller,
-                decoration: const InputDecoration(
-                  labelText: '¿Cuántos productos esperas vender al mes?',
-                ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                ],
-                validator: (_) => item.unidades <= 0
-                    ? 'Ingresa una cantidad mayor a 0'
-                    : null,
-              ),
+            if (item.seleccionado)
               Text(
-                '${item.costo.montoMensual.toStringAsFixed(2)} Bs / ${item.unidades.toStringAsFixed(0)} ventas = ${item.costoProrrateado.toStringAsFixed(2)} Bs por producto',
+                '${item.costo.montoMensual.toStringAsFixed(2)} Bs / ${_unidadesMes.toStringAsFixed(0)} unidades = ${item.costoProrrateado.toStringAsFixed(2)} Bs por producto',
               ),
-            ],
           ],
         ),
       ),
@@ -680,17 +729,14 @@ class _CostoFijoSeleccion {
   _CostoFijoSeleccion({
     required this.costo,
     required this.seleccionado,
-    double? unidades,
-  }) : controller = TextEditingController(
-         text: unidades == null ? '' : unidades.toStringAsFixed(0),
-       );
+    required this.unidadesMes,
+  });
 
   final CostoFijo costo;
-  final TextEditingController controller;
+  final double Function() unidadesMes;
   bool seleccionado;
 
-  double get unidades =>
-      double.tryParse(controller.text.trim().replaceAll(',', '.')) ?? 0;
+  double get unidades => unidadesMes();
   double get costoProrrateado =>
       unidades > 0 ? costo.montoMensual / unidades : 0;
 }
