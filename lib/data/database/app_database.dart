@@ -7,7 +7,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const String _databaseName = 'gastro_costos.db';
-  static const int _databaseVersion = 11;
+  static const int _databaseVersion = 12;
 
   Database? _database;
 
@@ -120,10 +120,11 @@ class AppDatabase {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         fecha TEXT NOT NULL,
         totalVentas REAL NOT NULL,
+        totalCostos REAL NOT NULL,
         totalGastos REAL NOT NULL,
         gananciaBruta REAL NOT NULL,
         gananciaNeta REAL NOT NULL,
-        observaciones TEXT NOT NULL
+        observaciones TEXT
       )
     ''');
   }
@@ -209,6 +210,44 @@ class AppDatabase {
     if (oldVersion < 11) {
       await _migrateGastosV11(db);
     }
+
+    if (oldVersion < 12) {
+      await _migrateCierresCajaV12(db);
+    }
+  }
+
+  Future<void> _migrateCierresCajaV12(Database db) async {
+    final cierresInfo = await db.rawQuery("PRAGMA table_info('cierres_caja')");
+
+    if (cierresInfo.isEmpty) {
+      await _createCierresCajaTable(db);
+      return;
+    }
+
+    final tieneTotalCostos = cierresInfo.any(
+      (column) => column['name'] == 'totalCostos',
+    );
+
+    if (!tieneTotalCostos) {
+      await db.execute(
+        'ALTER TABLE cierres_caja ADD COLUMN totalCostos REAL NOT NULL DEFAULT 0',
+      );
+    }
+  }
+
+  Future<void> _createCierresCajaTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE cierres_caja (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha TEXT NOT NULL,
+        totalVentas REAL NOT NULL,
+        totalCostos REAL NOT NULL,
+        totalGastos REAL NOT NULL,
+        gananciaBruta REAL NOT NULL,
+        gananciaNeta REAL NOT NULL,
+        observaciones TEXT
+      )
+    ''');
   }
 
   Future<void> _migrateGastosV11(Database db) async {
