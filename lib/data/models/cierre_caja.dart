@@ -2,6 +2,7 @@ class CierreCaja {
   const CierreCaja({
     required this.id,
     required this.fecha,
+    required this.horaCierre,
     required this.totalVentas,
     required this.totalCostos,
     required this.totalGastos,
@@ -12,6 +13,7 @@ class CierreCaja {
 
   final int id;
   final DateTime fecha;
+  final String horaCierre;
   final double totalVentas;
   final double totalCostos;
   final double totalGastos;
@@ -22,6 +24,7 @@ class CierreCaja {
   CierreCaja copyWith({
     int? id,
     DateTime? fecha,
+    String? horaCierre,
     double? totalVentas,
     double? totalCostos,
     double? totalGastos,
@@ -32,6 +35,7 @@ class CierreCaja {
     return CierreCaja(
       id: id ?? this.id,
       fecha: fecha ?? this.fecha,
+      horaCierre: horaCierre ?? this.horaCierre,
       totalVentas: totalVentas ?? this.totalVentas,
       totalCostos: totalCostos ?? this.totalCostos,
       totalGastos: totalGastos ?? this.totalGastos,
@@ -45,6 +49,7 @@ class CierreCaja {
     return {
       'id': id,
       'fecha': fecha.toIso8601String(),
+      'horaCierre': horaCierre,
       'totalVentas': totalVentas,
       'totalCostos': totalCostos,
       'totalGastos': totalGastos,
@@ -58,6 +63,7 @@ class CierreCaja {
     return CierreCaja(
       id: map['id'] as int,
       fecha: DateTime.parse(map['fecha'] as String),
+      horaCierre: map['horaCierre'] as String? ?? '',
       totalVentas: (map['totalVentas'] as num).toDouble(),
       totalCostos: (map['totalCostos'] as num?)?.toDouble() ?? 0,
       totalGastos: (map['totalGastos'] as num).toDouble(),

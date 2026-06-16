@@ -157,6 +157,7 @@ class _CierreCajaScreenState extends State<CierreCajaScreen> {
     final cierre = CierreCaja(
       id: cierreExistente?.id ?? 0,
       fecha: calculado.fecha,
+      horaCierre: _horaActual(),
       totalVentas: calculado.totalVentas,
       totalCostos: calculado.totalCostos,
       gananciaBruta: calculado.gananciaBruta,
@@ -178,11 +179,10 @@ class _CierreCajaScreenState extends State<CierreCajaScreen> {
     setState(() {
       _guardando = false;
     });
+    _observacionesController.clear();
     _recargarCierres();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(reemplazar ? 'Cierre reemplazado' : 'Cierre guardado'),
-      ),
+      const SnackBar(content: Text('Cierre guardado correctamente')),
     );
   }
 
@@ -447,7 +447,7 @@ class _CierreCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _formatFecha(cierre.fecha),
+                    '${_formatFecha(cierre.fecha)} - ${cierre.horaCierre}',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 6),
@@ -457,6 +457,8 @@ class _CierreCard extends StatelessWidget {
                     'Ganancia neta: ${_bs(cierre.gananciaNeta)}',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
+                  if (cierre.observaciones.trim().isNotEmpty)
+                    Text('Nota: ${cierre.observaciones.trim()}'),
                 ],
               ),
             ),
@@ -502,6 +504,14 @@ DateTime _fechaNormalizada(DateTime fecha) {
 
 String _bs(double value) {
   return '${value.toStringAsFixed(2)} Bs';
+}
+
+String _horaActual() {
+  final now = DateTime.now();
+  final hora = now.hour.toString().padLeft(2, '0');
+  final minuto = now.minute.toString().padLeft(2, '0');
+
+  return '$hora:$minuto';
 }
 
 String _formatFecha(DateTime fecha) {

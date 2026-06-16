@@ -7,7 +7,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const String _databaseName = 'gastro_costos.db';
-  static const int _databaseVersion = 12;
+  static const int _databaseVersion = 13;
 
   Database? _database;
 
@@ -119,6 +119,7 @@ class AppDatabase {
       CREATE TABLE cierres_caja (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         fecha TEXT NOT NULL,
+        horaCierre TEXT NOT NULL,
         totalVentas REAL NOT NULL,
         totalCostos REAL NOT NULL,
         totalGastos REAL NOT NULL,
@@ -214,6 +215,29 @@ class AppDatabase {
     if (oldVersion < 12) {
       await _migrateCierresCajaV12(db);
     }
+
+    if (oldVersion < 13) {
+      await _migrateCierresCajaV13(db);
+    }
+  }
+
+  Future<void> _migrateCierresCajaV13(Database db) async {
+    final cierresInfo = await db.rawQuery("PRAGMA table_info('cierres_caja')");
+
+    if (cierresInfo.isEmpty) {
+      await _createCierresCajaTable(db);
+      return;
+    }
+
+    final tieneHoraCierre = cierresInfo.any(
+      (column) => column['name'] == 'horaCierre',
+    );
+
+    if (!tieneHoraCierre) {
+      await db.execute(
+        "ALTER TABLE cierres_caja ADD COLUMN horaCierre TEXT NOT NULL DEFAULT '00:00'",
+      );
+    }
   }
 
   Future<void> _migrateCierresCajaV12(Database db) async {
@@ -240,6 +264,7 @@ class AppDatabase {
       CREATE TABLE cierres_caja (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         fecha TEXT NOT NULL,
+        horaCierre TEXT NOT NULL,
         totalVentas REAL NOT NULL,
         totalCostos REAL NOT NULL,
         totalGastos REAL NOT NULL,
