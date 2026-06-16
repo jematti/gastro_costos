@@ -7,7 +7,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const String _databaseName = 'gastro_costos.db';
-  static const int _databaseVersion = 9;
+  static const int _databaseVersion = 10;
 
   Database? _database;
 
@@ -94,9 +94,10 @@ class AppDatabase {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         productoId INTEGER NOT NULL,
         nombreProducto TEXT NOT NULL,
-        cantidad INTEGER NOT NULL,
+        cantidad REAL NOT NULL,
         precioUnitario REAL NOT NULL,
         totalVenta REAL NOT NULL,
+        costoUnitario REAL NOT NULL,
         costoTotal REAL NOT NULL,
         ganancia REAL NOT NULL,
         fechaVenta TEXT NOT NULL
@@ -199,6 +200,72 @@ class AppDatabase {
         'ALTER TABLE productos ADD COLUMN unidadesEstimadasMes REAL NOT NULL DEFAULT 0',
       );
     }
+
+    if (oldVersion < 10) {
+      await _migrateVentasV10(db);
+    }
+  }
+
+  Future<void> _migrateVentasV10(Database db) async {
+    final ventasInfo = await db.rawQuery("PRAGMA table_info('ventas')");
+
+    if (ventasInfo.isEmpty) {
+      await _createVentasTable(db);
+      return;
+    }
+
+    await _createVentasTable(db, tableName: 'ventas_nueva');
+    await db.execute('''
+      INSERT INTO ventas_nueva (
+        id,
+        productoId,
+        nombreProducto,
+        cantidad,
+        precioUnitario,
+        totalVenta,
+        costoUnitario,
+        costoTotal,
+        ganancia,
+        fechaVenta
+      )
+      SELECT
+        id,
+        productoId,
+        nombreProducto,
+        cantidad,
+        precioUnitario,
+        totalVenta,
+        CASE
+          WHEN cantidad > 0 THEN costoTotal / cantidad
+          ELSE 0
+        END,
+        costoTotal,
+        ganancia,
+        fechaVenta
+      FROM ventas
+    ''');
+    await db.execute('DROP TABLE ventas');
+    await db.execute('ALTER TABLE ventas_nueva RENAME TO ventas');
+  }
+
+  Future<void> _createVentasTable(
+    Database db, {
+    String tableName = 'ventas',
+  }) async {
+    await db.execute('''
+      CREATE TABLE $tableName (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        productoId INTEGER NOT NULL,
+        nombreProducto TEXT NOT NULL,
+        cantidad REAL NOT NULL,
+        precioUnitario REAL NOT NULL,
+        totalVenta REAL NOT NULL,
+        costoUnitario REAL NOT NULL,
+        costoTotal REAL NOT NULL,
+        ganancia REAL NOT NULL,
+        fechaVenta TEXT NOT NULL
+      )
+    ''');
   }
 
   Future<void> _createRecetaIngredientesTable(Database db) async {
