@@ -4,6 +4,7 @@ import '../../data/models/cierre_caja.dart';
 import '../../data/repositories/cierre_caja_repository.dart';
 import '../../data/repositories/gasto_repository.dart';
 import '../../data/repositories/venta_repository.dart';
+import '../../shared/widgets/empty_state.dart';
 
 class CierreCajaScreen extends StatefulWidget {
   const CierreCajaScreen({super.key});
@@ -274,8 +275,11 @@ class _CierreCajaScreenState extends State<CierreCajaScreen> {
               if (cierres.isEmpty) {
                 return const Card(
                   child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text('No hay cierres guardados.'),
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: EmptyState(
+                      icon: Icons.fact_check_outlined,
+                      message: 'No hay cierres de caja guardados.',
+                    ),
                   ),
                 );
               }

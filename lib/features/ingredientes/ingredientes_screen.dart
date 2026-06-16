@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../core/helpers/ingredient_icon_helper.dart';
 import '../../data/models/ingrediente.dart';
 import '../../data/repositories/ingrediente_repository.dart';
+import '../../shared/widgets/empty_state.dart';
 
 const List<String> _unidades = [
   'libra',
@@ -159,11 +160,10 @@ class _IngredientesScreenState extends State<IngredientesScreen> {
           final ingredientes = snapshot.data ?? [];
 
           if (ingredientes.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('No hay ingredientes registrados.'),
-              ),
+            return const EmptyState(
+              icon: Icons.inventory_2_outlined,
+              message:
+                  'No hay ingredientes registrados. Agrega tu primer ingrediente.',
             );
           }
 

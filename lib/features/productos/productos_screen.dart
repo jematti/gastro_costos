@@ -9,6 +9,7 @@ import '../../data/repositories/producto_costo_fijo_repository.dart';
 import '../../data/repositories/producto_costo_variable_repository.dart';
 import '../../data/repositories/producto_repository.dart';
 import '../../data/repositories/receta_repository.dart';
+import '../../shared/widgets/empty_state.dart';
 import 'costos_fijos_screen.dart';
 import 'producto_form_dialog.dart';
 
@@ -197,11 +198,10 @@ class _ProductosScreenState extends State<ProductosScreen> {
           final productos = snapshot.data ?? [];
 
           if (productos.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('No hay productos registrados.'),
-              ),
+            return const EmptyState(
+              icon: Icons.restaurant_menu_outlined,
+              message:
+                  'No hay productos registrados. Crea tu primer producto o menú.',
             );
           }
 

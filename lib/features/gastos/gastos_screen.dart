@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/models/gasto.dart';
 import '../../data/repositories/gasto_repository.dart';
+import '../../shared/widgets/empty_state.dart';
 
 class GastosScreen extends StatefulWidget {
   const GastosScreen({super.key});
@@ -118,8 +119,12 @@ class _GastosScreenState extends State<GastosScreen> {
               const SizedBox(height: 12),
               if (gastos.isEmpty)
                 const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 48),
-                  child: Center(child: Text('No hay gastos registrados.')),
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: EmptyState(
+                    icon: Icons.receipt_long_outlined,
+                    message:
+                        'No hay gastos registrados. Agrega tu primer gasto.',
+                  ),
                 )
               else
                 ...gastos.map(

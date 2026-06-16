@@ -7,7 +7,8 @@ void main() {
     await tester.pumpWidget(const GastroCostosApp());
 
     expect(find.text('GastroCostos'), findsOneWidget);
-    expect(find.text('Dashboard'), findsOneWidget);
+    expect(find.text('Resumen de hoy'), findsOneWidget);
+    expect(find.text('Accesos rápidos'), findsOneWidget);
     expect(find.text('Ingredientes'), findsOneWidget);
     expect(find.text('Recetas'), findsOneWidget);
     expect(find.text('Costos del negocio'), findsOneWidget);

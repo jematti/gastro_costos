@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'core/theme/app_theme.dart';
 import 'features/dashboard/home_screen.dart';
 
 void main() {
@@ -14,10 +15,7 @@ class GastroCostosApp extends StatelessWidget {
     return MaterialApp(
       title: 'GastroCostos',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light,
       home: const HomeScreen(),
     );
   }

@@ -6,6 +6,9 @@ import '../../data/repositories/gasto_repository.dart';
 import '../../data/repositories/producto_repository.dart';
 import '../../data/repositories/receta_repository.dart';
 import '../../data/repositories/venta_repository.dart';
+import '../../shared/widgets/module_card.dart';
+import '../../shared/widgets/section_title.dart';
+import '../../shared/widgets/summary_card.dart';
 import '../cierre_caja/cierre_caja_screen.dart';
 import '../gastos/gastos_screen.dart';
 import '../ingredientes/ingredientes_screen.dart';
@@ -135,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text('Dashboard', style: Theme.of(context).textTheme.titleLarge),
+              const SectionTitle('Resumen de hoy'),
               const SizedBox(height: 12),
               FutureBuilder<_DashboardResumen>(
                 future: _resumenFuture,
@@ -153,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
               const SizedBox(height: 20),
-              Text('Accesos', style: Theme.of(context).textTheme.titleMedium),
+              const SectionTitle('Accesos rápidos'),
               const SizedBox(height: 12),
               GridView.builder(
                 shrinkWrap: true,
@@ -168,34 +171,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 itemBuilder: (context, index) {
                   final module = modules[index];
 
-                  return Card(
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.of(
-                          context,
-                        ).push(MaterialPageRoute(builder: module.builder));
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              module.icon,
-                              size: 36,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              module.title,
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  return ModuleCard(
+                    title: module.title,
+                    icon: module.icon,
+                    onTap: () {
+                      Navigator.of(
+                        context,
+                      ).push(MaterialPageRoute(builder: module.builder));
+                    },
                   );
                 },
               ),
@@ -215,46 +198,50 @@ class _ResumenGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cierre = resumen.ultimoCierre;
-    final estadoGanancia = resumen.gananciaNetaHoy < 0
+    final gananciaNegativa = resumen.gananciaNetaHoy < 0;
+    final estadoGanancia = gananciaNegativa
         ? 'Pérdida estimada del día'
         : 'Ganancia estimada del día';
 
     final cards = [
       _ResumenCardData(
-        icono: '💰',
-        titulo: 'Ventas hoy',
-        valor: _bs(resumen.totalVentasHoy),
+        icon: Icons.payments_outlined,
+        title: 'Ventas hoy',
+        value: _bs(resumen.totalVentasHoy),
       ),
       _ResumenCardData(
-        icono: '🧾',
-        titulo: 'Gastos hoy',
-        valor: _bs(resumen.totalGastosHoy),
+        icon: Icons.receipt_long_outlined,
+        title: 'Gastos hoy',
+        value: _bs(resumen.totalGastosHoy),
       ),
       _ResumenCardData(
-        icono: '📊',
-        titulo: 'Ganancia bruta hoy',
-        valor: _bs(resumen.gananciaBrutaHoy),
+        icon: Icons.trending_up_outlined,
+        title: 'Ganancia bruta hoy',
+        value: _bs(resumen.gananciaBrutaHoy),
       ),
       _ResumenCardData(
-        icono: '📈',
-        titulo: 'Ganancia neta',
-        valor: _bs(resumen.gananciaNetaHoy),
-        detalle: estadoGanancia,
+        icon: Icons.insights_outlined,
+        title: 'Ganancia neta',
+        value: _bs(resumen.gananciaNetaHoy),
+        detail: estadoGanancia,
+        accentColor: gananciaNegativa
+            ? Theme.of(context).colorScheme.error
+            : Theme.of(context).colorScheme.primary,
       ),
       _ResumenCardData(
-        icono: '🍽️',
-        titulo: 'Productos',
-        valor: resumen.cantidadProductos.toString(),
+        icon: Icons.restaurant_menu_outlined,
+        title: 'Productos',
+        value: resumen.cantidadProductos.toString(),
       ),
       _ResumenCardData(
-        icono: '📖',
-        titulo: 'Recetas',
-        valor: resumen.cantidadRecetas.toString(),
+        icon: Icons.menu_book_outlined,
+        title: 'Recetas',
+        value: resumen.cantidadRecetas.toString(),
       ),
       _ResumenCardData(
-        icono: '🔒',
-        titulo: 'Último cierre',
-        valor: cierre == null
+        icon: Icons.lock_clock_outlined,
+        title: 'Último cierre',
+        value: cierre == null
             ? 'Sin cierres'
             : '${_formatFecha(cierre.fecha)} - ${cierre.horaCierre}',
       ),
@@ -270,52 +257,17 @@ class _ResumenGrid extends StatelessWidget {
         childAspectRatio: 1.55,
       ),
       itemCount: cards.length,
-      itemBuilder: (context, index) => _ResumenCard(data: cards[index]),
-    );
-  }
-}
+      itemBuilder: (context, index) {
+        final data = cards[index];
 
-class _ResumenCard extends StatelessWidget {
-  const _ResumenCard({required this.data});
-
-  final _ResumenCardData data;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              '${data.icono} ${data.titulo}',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              data.valor,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            if (data.detalle != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                data.detalle!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ],
-        ),
-      ),
+        return SummaryCard(
+          title: data.title,
+          value: data.value,
+          icon: data.icon,
+          detail: data.detail,
+          accentColor: data.accentColor,
+        );
+      },
     );
   }
 }
@@ -354,16 +306,18 @@ class _DashboardResumen {
 
 class _ResumenCardData {
   const _ResumenCardData({
-    required this.icono,
-    required this.titulo,
-    required this.valor,
-    this.detalle,
+    required this.icon,
+    required this.title,
+    required this.value,
+    this.detail,
+    this.accentColor,
   });
 
-  final String icono;
-  final String titulo;
-  final String valor;
-  final String? detalle;
+  final IconData icon;
+  final String title;
+  final String value;
+  final String? detail;
+  final Color? accentColor;
 }
 
 class _ModuleItem {

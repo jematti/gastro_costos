@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/models/receta.dart';
 import '../../data/repositories/receta_repository.dart';
+import '../../shared/widgets/empty_state.dart';
 import 'receta_detalle_screen.dart';
 
 class RecetasScreen extends StatefulWidget {
@@ -141,11 +142,9 @@ class _RecetasScreenState extends State<RecetasScreen> {
           final recetas = snapshot.data ?? [];
 
           if (recetas.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('No hay recetas registradas.'),
-              ),
+            return const EmptyState(
+              icon: Icons.menu_book_outlined,
+              message: 'No hay recetas registradas. Crea tu primera receta.',
             );
           }
 
