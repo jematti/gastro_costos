@@ -17,6 +17,7 @@ class Producto {
     required this.precioVentaSugerido,
     required this.precioVentaFinal,
     required this.fechaRegistro,
+    this.imagePath,
   });
 
   final int id;
@@ -36,6 +37,7 @@ class Producto {
   final double precioVentaSugerido;
   final double precioVentaFinal;
   final DateTime fechaRegistro;
+  final String? imagePath;
 
   Producto copyWith({
     int? id,
@@ -55,6 +57,7 @@ class Producto {
     double? precioVentaSugerido,
     double? precioVentaFinal,
     DateTime? fechaRegistro,
+    String? imagePath,
   }) {
     return Producto(
       id: id ?? this.id,
@@ -74,6 +77,7 @@ class Producto {
       precioVentaSugerido: precioVentaSugerido ?? this.precioVentaSugerido,
       precioVentaFinal: precioVentaFinal ?? this.precioVentaFinal,
       fechaRegistro: fechaRegistro ?? this.fechaRegistro,
+      imagePath: imagePath ?? this.imagePath,
     );
   }
 
@@ -96,6 +100,7 @@ class Producto {
       'precioVentaSugerido': precioVentaSugerido,
       'precioVentaFinal': precioVentaFinal,
       'fechaRegistro': fechaRegistro.toIso8601String(),
+      'imagePath': imagePath,
     };
   }
 
@@ -122,6 +127,7 @@ class Producto {
       precioVentaSugerido: (map['precioVentaSugerido'] as num).toDouble(),
       precioVentaFinal: (map['precioVentaFinal'] as num).toDouble(),
       fechaRegistro: DateTime.parse(map['fechaRegistro'] as String),
+      imagePath: map['imagePath'] as String?,
     );
   }
 }

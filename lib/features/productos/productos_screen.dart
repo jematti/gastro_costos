@@ -10,6 +10,7 @@ import '../../data/repositories/producto_costo_variable_repository.dart';
 import '../../data/repositories/producto_repository.dart';
 import '../../data/repositories/receta_repository.dart';
 import '../../shared/widgets/empty_state.dart';
+import '../../shared/widgets/local_image_preview.dart';
 import 'costos_fijos_screen.dart';
 import 'producto_form_dialog.dart';
 
@@ -217,6 +218,12 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      LocalImagePreview(
+                        imagePath: producto.imagePath,
+                        size: 64,
+                        fallbackIcon: Icons.restaurant_menu_outlined,
+                      ),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,

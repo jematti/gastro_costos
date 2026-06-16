@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/helpers/image_helper.dart';
 import '../../data/models/costo_fijo.dart';
 import '../../data/models/producto.dart';
 import '../../data/models/producto_costo_fijo.dart';
 import '../../data/models/producto_costo_variable.dart';
 import '../../data/models/receta.dart';
+import '../../shared/widgets/local_image_preview.dart';
 
 class ProductoFormResult {
   const ProductoFormResult({
@@ -53,6 +55,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   late final List<_CostoFijoSeleccion> _costosFijos;
   late List<ProductoCostoVariable> _costosVariables;
   Receta? _recetaSeleccionada;
+  String? _imagePath;
   bool _actualizandoPrecioFinal = false;
   bool _precioFinalEditado = false;
   int _pasoActual = 0;
@@ -102,6 +105,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     _precioFinalController = TextEditingController(
       text: producto?.precioVentaFinal.toStringAsFixed(2) ?? '0.00',
     );
+    _imagePath = _normalizarImagePath(producto?.imagePath);
     _costosVariables = List.of(widget.costosVariablesIniciales);
     _costosFijos = _crearSeleccionesCostosFijos();
 
@@ -120,6 +124,14 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
     _margenController.addListener(_recalcular);
     _precioFinalController.addListener(_registrarPrecioFinalEditado);
     _recalcularVariables();
+  }
+
+  String? _normalizarImagePath(String? imagePath) {
+    if (imagePath == null || imagePath.trim().isEmpty) {
+      return null;
+    }
+
+    return imagePath;
   }
 
   String _unidadesInicialesMes(Producto? producto) {
@@ -213,6 +225,24 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   void _seleccionarReceta(Receta? receta) {
     _recetaSeleccionada = receta;
     _recalcular();
+  }
+
+  Future<void> _seleccionarImagen() async {
+    final imagePath = await ImageHelper.pickAndSaveImage('product_images');
+
+    if (imagePath == null) {
+      return;
+    }
+
+    setState(() {
+      _imagePath = imagePath;
+    });
+  }
+
+  void _quitarImagen() {
+    setState(() {
+      _imagePath = null;
+    });
   }
 
   Future<void> _abrirCostoVariable({int? index}) async {
@@ -353,6 +383,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
           precioVentaSugerido: _precioSugerido,
           precioVentaFinal: _numero(_precioFinalController.text)!,
           fechaRegistro: productoAnterior?.fechaRegistro ?? DateTime.now(),
+          imagePath: _imagePath,
         ),
         costosFijos: costosFijos,
         costosVariables: _costosVariables,
@@ -445,6 +476,44 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                 labelText: 'Nombre del producto',
               ),
               validator: _obligatorio,
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Imagen opcional',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                LocalImagePreview(
+                  imagePath: _imagePath,
+                  size: 64,
+                  fallbackIcon: Icons.restaurant_menu_outlined,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _seleccionarImagen,
+                        icon: const Icon(Icons.photo_library_outlined),
+                        label: const Text('Seleccionar imagen'),
+                      ),
+                      if (_imagePath != null)
+                        TextButton.icon(
+                          onPressed: _quitarImagen,
+                          icon: const Icon(Icons.close),
+                          label: const Text('Quitar imagen'),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<Receta>(

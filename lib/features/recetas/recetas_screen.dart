@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../core/helpers/image_helper.dart';
 import '../../data/models/receta.dart';
 import '../../data/repositories/receta_repository.dart';
 import '../../shared/widgets/empty_state.dart';
+import '../../shared/widgets/local_image_preview.dart';
 import 'receta_detalle_screen.dart';
 
 class RecetasScreen extends StatefulWidget {
@@ -158,6 +160,11 @@ class _RecetasScreenState extends State<RecetasScreen> {
               return Card(
                 child: ListTile(
                   onTap: () => _abrirDetalle(receta),
+                  leading: LocalImagePreview(
+                    imagePath: receta.imagePath,
+                    size: 64,
+                    fallbackIcon: Icons.soup_kitchen_outlined,
+                  ),
                   title: Text(receta.nombre),
                   subtitle: Text(
                     '${_descripcionCorta(receta.descripcion)}\n'
@@ -209,7 +216,9 @@ class _RecetaFormDialogState extends State<_RecetaFormDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nombreController;
   late final TextEditingController _descripcionController;
+  late final TextEditingController _procedimientoController;
   late final TextEditingController _porcionesController;
+  String? _imagePath;
 
   @override
   void initState() {
@@ -219,17 +228,48 @@ class _RecetaFormDialogState extends State<_RecetaFormDialog> {
     _descripcionController = TextEditingController(
       text: receta?.descripcion ?? '',
     );
+    _procedimientoController = TextEditingController(
+      text: receta?.procedimiento ?? '',
+    );
     _porcionesController = TextEditingController(
       text: receta?.porciones.toString() ?? '',
     );
+    _imagePath = _normalizarImagePath(receta?.imagePath);
   }
 
   @override
   void dispose() {
     _nombreController.dispose();
     _descripcionController.dispose();
+    _procedimientoController.dispose();
     _porcionesController.dispose();
     super.dispose();
+  }
+
+  String? _normalizarImagePath(String? imagePath) {
+    if (imagePath == null || imagePath.trim().isEmpty) {
+      return null;
+    }
+
+    return imagePath;
+  }
+
+  Future<void> _seleccionarImagen() async {
+    final imagePath = await ImageHelper.pickAndSaveImage('recipe_images');
+
+    if (imagePath == null) {
+      return;
+    }
+
+    setState(() {
+      _imagePath = imagePath;
+    });
+  }
+
+  void _quitarImagen() {
+    setState(() {
+      _imagePath = null;
+    });
   }
 
   String? _validarNombre(String? value) {
@@ -264,10 +304,12 @@ class _RecetaFormDialogState extends State<_RecetaFormDialog> {
         id: receta?.id ?? 0,
         nombre: _nombreController.text.trim(),
         descripcion: _descripcionController.text.trim(),
+        procedimiento: _procedimientoController.text.trim(),
         porciones: porciones,
         costoTotal: costoTotal,
         costoPorPorcion: costoTotal / porciones,
         fechaRegistro: receta?.fechaRegistro ?? DateTime.now(),
+        imagePath: _imagePath,
       ),
     );
   }
@@ -276,37 +318,99 @@ class _RecetaFormDialogState extends State<_RecetaFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.receta == null ? 'Crear receta' : 'Editar receta'),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _nombreController,
-                decoration: const InputDecoration(labelText: 'Nombre'),
-                textInputAction: TextInputAction.next,
-                validator: _validarNombre,
-              ),
-              TextFormField(
-                controller: _descripcionController,
-                decoration: const InputDecoration(
-                  labelText: 'Descripción',
-                  helperText: 'Opcional',
+      content: SizedBox(
+        width: 560,
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: _nombreController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre',
+                    hintText: 'Ejemplo: Salsa de tomate',
+                  ),
+                  textInputAction: TextInputAction.next,
+                  validator: _validarNombre,
                 ),
-                minLines: 2,
-                maxLines: 4,
-                textInputAction: TextInputAction.next,
-              ),
-              TextFormField(
-                controller: _porcionesController,
-                decoration: const InputDecoration(labelText: 'Porciones'),
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.done,
-                validator: _validarPorciones,
-                onFieldSubmitted: (_) => _guardar(),
-              ),
-            ],
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _descripcionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Descripción',
+                    helperText: 'Opcional',
+                  ),
+                  minLines: 2,
+                  maxLines: 4,
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _procedimientoController,
+                  decoration: const InputDecoration(
+                    labelText: 'Procedimiento de preparación',
+                    hintText:
+                        'Ejemplo: Cocinar el tomate, agregar cebolla y dejar hervir 15 minutos.',
+                    helperText: 'Opcional',
+                  ),
+                  minLines: 4,
+                  maxLines: 6,
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _porcionesController,
+                  decoration: const InputDecoration(
+                    labelText: 'Porciones',
+                    hintText: 'Ejemplo: 6',
+                  ),
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.done,
+                  validator: _validarPorciones,
+                  onFieldSubmitted: (_) => _guardar(),
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Imagen opcional',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    LocalImagePreview(
+                      imagePath: _imagePath,
+                      size: 64,
+                      fallbackIcon: Icons.soup_kitchen_outlined,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: _seleccionarImagen,
+                            icon: const Icon(Icons.photo_library_outlined),
+                            label: const Text('Seleccionar imagen'),
+                          ),
+                          if (_imagePath != null)
+                            TextButton.icon(
+                              onPressed: _quitarImagen,
+                              icon: const Icon(Icons.close),
+                              label: const Text('Quitar imagen'),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

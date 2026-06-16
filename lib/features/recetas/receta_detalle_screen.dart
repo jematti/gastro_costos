@@ -4,6 +4,7 @@ import '../../data/models/receta.dart';
 import '../../data/models/receta_ingrediente.dart';
 import '../../data/repositories/receta_ingrediente_repository.dart';
 import '../../data/repositories/receta_repository.dart';
+import '../../shared/widgets/local_image_preview.dart';
 import 'agregar_ingrediente_receta_screen.dart';
 
 class RecetaDetalleScreen extends StatefulWidget {
@@ -141,6 +142,13 @@ class _RecetaDetalleScreenState extends State<RecetaDetalleScreen> {
     return descripcion.isEmpty ? 'Sin descripción' : descripcion;
   }
 
+  String _procedimientoReceta() {
+    final procedimiento = _receta.procedimiento.trim();
+    return procedimiento.isEmpty
+        ? 'Sin procedimiento registrado.'
+        : procedimiento;
+  }
+
   String _formatearCantidad(double cantidad) {
     if (cantidad == cantidad.roundToDouble()) {
       return cantidad.toStringAsFixed(0);
@@ -161,6 +169,12 @@ class _RecetaDetalleScreenState extends State<RecetaDetalleScreen> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              LocalImagePreview(
+                imagePath: _receta.imagePath,
+                size: 180,
+                fallbackIcon: Icons.soup_kitchen_outlined,
+              ),
+              const SizedBox(height: 16),
               Text(
                 _receta.nombre,
                 style: Theme.of(context).textTheme.titleLarge,
@@ -168,7 +182,18 @@ class _RecetaDetalleScreenState extends State<RecetaDetalleScreen> {
               const SizedBox(height: 8),
               Text(_descripcionReceta()),
               const SizedBox(height: 12),
+              Text(
+                'Procedimiento',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 6),
+              Text(_procedimientoReceta()),
+              const SizedBox(height: 12),
               Text('Porciones: ${_receta.porciones}'),
+              Text('Costo total: ${_receta.costoTotal.toStringAsFixed(2)} Bs'),
+              Text(
+                'Costo por porción: ${_receta.costoPorPorcion.toStringAsFixed(2)} Bs',
+              ),
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: () => _abrirFormulario(),

@@ -7,7 +7,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const String _databaseName = 'gastro_costos.db';
-  static const int _databaseVersion = 13;
+  static const int _databaseVersion = 14;
 
   Database? _database;
 
@@ -53,10 +53,12 @@ class AppDatabase {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nombre TEXT NOT NULL,
         descripcion TEXT NOT NULL,
+        procedimiento TEXT,
         porciones INTEGER NOT NULL,
         costoTotal REAL NOT NULL,
         costoPorPorcion REAL NOT NULL,
-        fechaRegistro TEXT NOT NULL
+        fechaRegistro TEXT NOT NULL,
+        imagePath TEXT
       )
     ''');
 
@@ -80,7 +82,8 @@ class AppDatabase {
         margenGanancia REAL NOT NULL,
         precioVentaSugerido REAL NOT NULL,
         precioVentaFinal REAL NOT NULL,
-        fechaRegistro TEXT NOT NULL
+        fechaRegistro TEXT NOT NULL,
+        imagePath TEXT
       )
     ''');
 
@@ -218,6 +221,33 @@ class AppDatabase {
 
     if (oldVersion < 13) {
       await _migrateCierresCajaV13(db);
+    }
+
+    if (oldVersion < 14) {
+      await _migrateImagesAndProcedureV14(db);
+    }
+  }
+
+  Future<void> _migrateImagesAndProcedureV14(Database db) async {
+    final recetasInfo = await db.rawQuery("PRAGMA table_info('recetas')");
+    if (recetasInfo.isNotEmpty) {
+      final recetaColumns = recetasInfo.map((column) => column['name']).toSet();
+      if (!recetaColumns.contains('procedimiento')) {
+        await db.execute('ALTER TABLE recetas ADD COLUMN procedimiento TEXT');
+      }
+      if (!recetaColumns.contains('imagePath')) {
+        await db.execute('ALTER TABLE recetas ADD COLUMN imagePath TEXT');
+      }
+    }
+
+    final productosInfo = await db.rawQuery("PRAGMA table_info('productos')");
+    if (productosInfo.isNotEmpty) {
+      final productoColumns = productosInfo
+          .map((column) => column['name'])
+          .toSet();
+      if (!productoColumns.contains('imagePath')) {
+        await db.execute('ALTER TABLE productos ADD COLUMN imagePath TEXT');
+      }
     }
   }
 
