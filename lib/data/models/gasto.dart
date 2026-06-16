@@ -5,6 +5,7 @@ class Gasto {
     required this.monto,
     required this.categoria,
     required this.fechaGasto,
+    required this.observacion,
   });
 
   final int id;
@@ -12,6 +13,7 @@ class Gasto {
   final double monto;
   final String categoria;
   final DateTime fechaGasto;
+  final String observacion;
 
   Gasto copyWith({
     int? id,
@@ -19,6 +21,7 @@ class Gasto {
     double? monto,
     String? categoria,
     DateTime? fechaGasto,
+    String? observacion,
   }) {
     return Gasto(
       id: id ?? this.id,
@@ -26,6 +29,7 @@ class Gasto {
       monto: monto ?? this.monto,
       categoria: categoria ?? this.categoria,
       fechaGasto: fechaGasto ?? this.fechaGasto,
+      observacion: observacion ?? this.observacion,
     );
   }
 
@@ -36,6 +40,7 @@ class Gasto {
       'monto': monto,
       'categoria': categoria,
       'fechaGasto': fechaGasto.toIso8601String(),
+      'observacion': observacion,
     };
   }
 
@@ -46,6 +51,7 @@ class Gasto {
       monto: (map['monto'] as num).toDouble(),
       categoria: map['categoria'] as String,
       fechaGasto: DateTime.parse(map['fechaGasto'] as String),
+      observacion: map['observacion'] as String? ?? '',
     );
   }
 }

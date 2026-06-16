@@ -7,7 +7,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const String _databaseName = 'gastro_costos.db';
-  static const int _databaseVersion = 10;
+  static const int _databaseVersion = 11;
 
   Database? _database;
 
@@ -110,7 +110,8 @@ class AppDatabase {
         concepto TEXT NOT NULL,
         monto REAL NOT NULL,
         categoria TEXT NOT NULL,
-        fechaGasto TEXT NOT NULL
+        fechaGasto TEXT NOT NULL,
+        observacion TEXT
       )
     ''');
 
@@ -204,6 +205,40 @@ class AppDatabase {
     if (oldVersion < 10) {
       await _migrateVentasV10(db);
     }
+
+    if (oldVersion < 11) {
+      await _migrateGastosV11(db);
+    }
+  }
+
+  Future<void> _migrateGastosV11(Database db) async {
+    final gastosInfo = await db.rawQuery("PRAGMA table_info('gastos')");
+
+    if (gastosInfo.isEmpty) {
+      await _createGastosTable(db);
+      return;
+    }
+
+    final tieneObservacion = gastosInfo.any(
+      (column) => column['name'] == 'observacion',
+    );
+
+    if (!tieneObservacion) {
+      await db.execute('ALTER TABLE gastos ADD COLUMN observacion TEXT');
+    }
+  }
+
+  Future<void> _createGastosTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE gastos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        concepto TEXT NOT NULL,
+        monto REAL NOT NULL,
+        categoria TEXT NOT NULL,
+        fechaGasto TEXT NOT NULL,
+        observacion TEXT
+      )
+    ''');
   }
 
   Future<void> _migrateVentasV10(Database db) async {
